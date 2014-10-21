@@ -75,7 +75,7 @@ typedef struct conf_project {
 
 static void show_help(void) {
     char *b = "--------------------------------------------------------------------------------------------------\n"
-            "This is free software, and you are welcome to modify and redistribute it under the New BSD License\n"
+            "This is free software, and you are welcome to modify and redistribute it under the BSD License\n"
             "\n"
             "-c <config_addr>  config address\n"
             "-d            run as a daemon\n"
