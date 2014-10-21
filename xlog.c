@@ -169,21 +169,6 @@ void sendMsg(char *ip, unsigned int port, char *msg, int index, conf_project *c_
 }
 
 
-//#include "/usr/include/mysql/mysql.h"
-//gcc -o fork fork.c -L /usr/local/mysql/lib/mysql/ -I /usr/local/mysql/include/mysql/   -lmysqlclient `pkg-config --cflags --libs glib-2.0`
-//#include <hiredis/hiredis.h>
-//gcc -o xlog qsf_tail.c -lhiredis `pkg-config --cflags --libs glib-2.0`
-//ps aux | grep 'xlog' | grep -v 'grep' | awk 'BEGIN{FS=OFS=" "}{a[$2]=$2}END{for(i in a) b=b","a[i] ;print substr(b,2)}' | xargs  top -b -p
-
-
-
-//gcc -c proc_title.c 
-//gcc -c  parse_conf.c `pkg-config --cflags --libs glib-2.0`
-//gcc -c fork.c -L /usr/local/mysql/lib/mysql/ -I /usr/local/mysql/include/mysql/   -lmysqlclient `pkg-config --cflags --libs glib-2.0`
-//gcc -o fork fork.o  proc_title.o parse_conf.o  -L /usr/local/mysql/lib/mysql/ -I /usr/local/mysql/include/mysql/   -lmysqlclient `pkg-config --cflags --libs glib-2.0`
-//
-//rm -rf ./*.o
-
 void *
 debug_malloc(size_t size, const char *file, int line, const char *func)
 {

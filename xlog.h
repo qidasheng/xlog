@@ -75,14 +75,12 @@ typedef struct conf_project {
 
 static void show_help(void) {
     char *b = "--------------------------------------------------------------------------------------------------\n"
-            "Author: qishengfu, E-mail: qishengfu@kingsoft.com\n"
             "This is free software, and you are welcome to modify and redistribute it under the New BSD License\n"
             "\n"
             "-c <config_addr>  config address\n"
             "-d            run as a daemon\n"
             "-h            print this help and exit\n\n"
             "\n"
-            "Please visit \"http://www.qsf.com/\" for more help information.\n\n"
             "--------------------------------------------------------------------------------------------------\n"
             "\n";
     fprintf(stderr, b, strlen(b));

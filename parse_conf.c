@@ -48,7 +48,6 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
         char *p[2];
         char *buf = line;
         char *key_name = NULL;
-        //printf("line %s \n", buf);
         while((p[i]=strtok(buf,"="))!=NULL) {
                 i++;
                 buf=NULL;
@@ -56,81 +55,55 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
         if (p[0] != NULL && p[1] != NULL) {
                 key = trim_str(p[0]);
                 val = trim_str(p[1]);
-                //printf("index %d key=value->%s=%s\n",index, key, val);
                 if (index != -1) {
-                        if ((key_name = "name" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);                                 
+                        if ((key_name = "name" , strcmp(key, key_name))==0) {                           
                                 xstrcpy(project_arr[index].name,  val);
-                                //printf("project_arr[index].name:%s\n", project_arr[index].name);
-                        } else if ((key_name = "from_begin" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);                                 
+                        } else if ((key_name = "from_begin" , strcmp(key, key_name))==0) {                          
                                 project_arr[index].from_begin = atoi(val);
-                        } else if ((key_name = "path" , strcmp(key, key_name)) == 0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);                                 
+                        } else if ((key_name = "path" , strcmp(key, key_name)) == 0) {                          
                                 xstrcpy(project_arr[index].path , val);
-                                //printf("project_arr[index].path:%s\n", project_arr[index].path);
-                        } else if ((key_name = "type" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);                                 
-                                xstrcpy(project_arr[index].type ,val);
-                                //printf("project_arr[index].type:%s\n", project_arr[index].type);								
+                        } else if ((key_name = "type" , strcmp(key, key_name))==0) {                         
+                                xstrcpy(project_arr[index].type ,val);						
                         } else {
 							if ((key_name = "line_min_len" , strcmp(key, key_name))==0) {
-									//printf("坑爹：%s#%s\n",key,key_name);
 									project_arr[index].config.line_min_len = atoi(val);
 							} else if ((key_name = "line_max_len" , strcmp(key, key_name)) == 0) {
-									//printf("坑爹：%s#%s\n",key,key_name);
 									project_arr[index].config.line_max_len = atoi(val);
 							} else if ((key_name = "line_count_per" , strcmp(key, key_name))==0) {
-									//printf("坑爹：%s#%s\n",key,key_name);
 									project_arr[index].config.line_count_per = atoi(val);
 							} else if ((key_name = "server_addr" , strcmp(key, key_name))==0) {
-									//printf("坑爹：%s#%s\n",key,key_name);
 									xstrcpy(project_arr[index].config.server_addr, val);
 							} else if ((key_name = "server_port" , strcmp(key, key_name))==0) {
-									//printf("坑爹：%s#%s\n",key,key_name);
 									project_arr[index].config.server_port = atoi(val);
 							} else if ((key_name = "server_retry_count" , strcmp(key, key_name))==0) {
-									//printf("坑爹：%s#%s\n",key,key_name);
 									project_arr[index].config.server_retry_count = atoi(val);
 							} else if ((key_name = "server_retry_interval" , strcmp(key, key_name))==0) {
-									//printf("坑爹：%s#%s\n",key,key_name);
 									project_arr[index].config.server_retry_interval = atoi(val);								
 							}
                 
 		       }
 		} else {
                         if ((key_name = "line_min_len" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 public_arr->line_min_len = atoi(val);
                         } else if ((key_name = "line_max_len" , strcmp(key, key_name)) == 0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 public_arr->line_max_len = atoi(val);
                         } else if ((key_name = "line_count_per" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 public_arr->line_count_per = atoi(val);
                         } else if ((key_name = "server_addr" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 xstrcpy(public_arr->server_addr, val);
                         } else if ((key_name = "server_port" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 public_arr->server_port = atoi(val);
                         } else if ((key_name = "server_retry_count" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 public_arr->server_retry_count = atoi(val);
                         } else if ((key_name = "server_retry_interval" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 public_arr->server_retry_interval = atoi(val);								
                         } else if ((key_name = "log_file" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 xstrcpy(public_arr->log_file, val);
                         } else if ((key_name = "log_level" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 xstrcpy(public_arr->log_level, val);
                         } else if ((key_name = "listen_addr" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 xstrcpy(public_arr->listen_addr, val);
                         } else if ((key_name = "listen_port" , strcmp(key, key_name))==0) {
-                                //printf("坑爹：%s#%s\n",key,key_name);
                                 public_arr->listen_port = atoi(val);	
                         }
                 }
@@ -142,34 +115,17 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
 
 
 int get_conf(FILE *f, conf_public *public_arr, conf_project *project_arr) {    
-        char       buf[BUFFER];
-        char       conf_line[1024];
-
-
-        //printf("project count:%d\n",count);
-	/*
-        int k = 0;
-        for (k=0; k < count; k++) {
-		project_arr[k] = struct conf_project *project;
-	}
-	*/	
+    char       buf[BUFFER];
+    char       conf_line[1024];
 	int n = 0;
 
-        int is_project_conf = 0;
-        int project_conf_index = 0;
+    int is_project_conf = 0;
+    int project_conf_index = 0;
 	int project_index = 0;
-	//FILE *f;
-        //if (!(f = fopen(conf_path, "r"))) {
-        //        fprintf(stderr, _("Cannot open configure file \"%s\" for read\n"), conf_path);
-        //        exit(1);
-        //}
-        //读取日志路径，并去掉末尾的换行符
 	fseek(f, 0, SEEK_SET);
 	while(!feof(f)) {
 		fgets(conf_line, 1024, f);
-		//printf("buf %s\n",conf_line);
-
-                if (strstr(conf_line, "[project]") != NULL) { 
+        if (strstr(conf_line, "[project]") != NULL) { 
 			is_project_conf = 1;
 			project_conf_index = 0;
 			project_index++;
@@ -188,10 +144,6 @@ int get_conf(FILE *f, conf_public *public_arr, conf_project *project_arr) {
 		}
 		n++;
 	}
-         //line_min_len = atoi(g_hash_table_lookup(table_conf, "line_min_len"));
-         //line_max_len = atoi(g_hash_table_lookup(table_conf, "line_max_len"));
-         //line_count_per = atoi(g_hash_table_lookup(table_conf, "line_count_per"));
-         //log_file = g_hash_table_lookup(table_conf, "log_file");
 	return 0;
 }
 
