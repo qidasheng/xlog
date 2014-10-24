@@ -41,7 +41,7 @@ static struct conf_project * init_conf_project (void)
 
 int parse_project(char *line, conf_public *public_arr,  conf_project *project_arr, int index) 
 {
-        if (line == NULL || line == "\r\n") {
+        if (line == NULL || line == "\r\n" || line[0] == "#") {
                 return 0;
         }
         const char *key, *val;
