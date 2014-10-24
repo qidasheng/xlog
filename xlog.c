@@ -25,6 +25,7 @@ extern int  server_retry_interval;
 long line_count = 0;
 long line_count_ok = 0;
 long line_count_total = 0;
+long line_count_ignore = 0;
 
 extern const char *conf_path;
 
@@ -466,6 +467,12 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 					if ( strcmp(project[index].type, "nginx") == 0 && (!isdigit(buf[0]) || !is_ip_start(buf)) ) {
 						continue;
 					}
+
+					if ( strlen(project[index].ignore) > 5  &&  strstr(buf, project[index].ignore) != NULL ) {
+						line_count_ignore++;
+						c_shmaddr[index].count_ignore = line_count_ignore;
+						continue;
+					}
 					//printf("%s", buf);
 					long int fgets_len = strlen(buf);
 					if ( fgets_len < line_max_len && fgets_len > line_min_len ) {
@@ -577,10 +584,10 @@ int main(int argc, char **argv)
 	int status,i,j;
 
          int shmid;
-         key_t key_shm = ftok("/tmp/xlog_shm", (int)'a');  
-         shmid= shmget(key_shm,sizeof(project_arr),IPC_CREAT);
+         key_t key_shm = ftok("/tmp/xlog_shm", (int)"q");  
+         shmid= shmget(key_shm, sizeof(project_arr), IPC_CREAT);
          if(shmid== -1){                            // 申请共享内存失败
-                   printf("createshare memory failed.\n");
+                   printf("create share memory failed : %s\n", strerror(errno));
                    exit(-1);
          }
          

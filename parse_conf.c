@@ -31,6 +31,7 @@ static struct conf_project * init_conf_project (void)
    project->count = 0;
    project->count_ok = 0;
    project->count_total = 0;
+   project->count_ignore = 0;
 
    return project;
 }
@@ -64,6 +65,8 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
                                 xstrcpy(project_arr[index].path , val);
                         } else if ((key_name = "type" , strcmp(key, key_name))==0) {                         
                                 xstrcpy(project_arr[index].type ,val);						
+                        } else if ((key_name = "ignore" , strcmp(key, key_name))==0) {                         
+                                xstrcpy(project_arr[index].ignore ,val);						
                         } else {
 							if ((key_name = "line_min_len" , strcmp(key, key_name))==0) {
 									project_arr[index].config.line_min_len = atoi(val);

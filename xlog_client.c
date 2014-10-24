@@ -128,10 +128,10 @@ int main(int argc, char **argv)
         int status,i,j;
 
         int shmid;
-        key_t key = ftok("/tmp/xlog", (int)'a'); 
-        shmid= shmget(key, sizeof(project_arr),IPC_CREAT);
+        key_t key_shm = ftok("/tmp/xlog_shm", (int)"q");
+        shmid= shmget(key_shm, sizeof(project_arr), IPC_CREAT);
         if(shmid== -1){                            // 申请共享内存失败
-                  printf("createshare memory failed.\n");
+                  printf("create share memory failed : %s\n", strerror(errno));
                   exit(-1);
         }
         struct conf_project *p_shmaddr;
@@ -140,9 +140,9 @@ int main(int argc, char **argv)
         memcpy(p_shmaddr, project_arr, sizeof(project_arr));                      // 拷贝共享数据到共享内存
 	while(1) {
 	 	for(i=0;i<count;i++) {
-                	printf("%d %s %d %d %d\n",i, project_arr[i].path, p_shmaddr[i].count_total, p_shmaddr[i].count,  p_shmaddr[i].count_ok);
+                	printf("%d %s %d %d %d %d\n",i, project_arr[i].path, p_shmaddr[i].count_total, p_shmaddr[i].count,  p_shmaddr[i].count_ok, p_shmaddr[i].count_ignore);
 		}
-       		 sleep(1);
+       		sleep(1);
 	}
 }
 

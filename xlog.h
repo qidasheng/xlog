@@ -66,10 +66,12 @@ typedef struct conf_project {
         int  from_begin;
         char path[LINE];
         char type[LINE];
+        char ignore[LINE];
         long  pid;
         long count;
         long count_ok;
         long count_total;
+        long count_ignore;
         struct conf_public config;
 } conf_project;
 
