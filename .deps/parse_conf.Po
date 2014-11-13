@@ -1,5 +1,5 @@
-parse_conf.o parse_conf.o: parse_conf.c xlog.h /usr/include/stdlib.h \
-  /usr/include/features.h /usr/include/sys/cdefs.h \
+parse_conf.o parse_conf.o: parse_conf.c parse_conf.h xlog.h \
+  /usr/include/stdlib.h /usr/include/features.h /usr/include/sys/cdefs.h \
   /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h \
   /usr/include/gnu/stubs-64.h \
   /usr/lib/gcc/x86_64-redhat-linux/4.1.2/include/stddef.h \
@@ -46,6 +46,8 @@ parse_conf.o parse_conf.o: parse_conf.c xlog.h /usr/include/stdlib.h \
   /usr/include/sys/ipc.h /usr/include/bits/ipctypes.h \
   /usr/include/bits/ipc.h /usr/include/sys/shm.h /usr/include/bits/shm.h \
   /usr/include/sys/sem.h /usr/include/bits/sem.h
+
+parse_conf.h:
 
 xlog.h:
 

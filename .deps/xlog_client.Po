@@ -45,7 +45,8 @@ xlog_client.o xlog_client.o: xlog_client.c /usr/include/stdlib.h \
   /usr/include/sys/syslog.h /usr/include/bits/syslog-path.h \
   /usr/include/sys/ipc.h /usr/include/bits/ipctypes.h \
   /usr/include/bits/ipc.h /usr/include/sys/shm.h /usr/include/bits/shm.h \
-  xlog.h /usr/include/sys/sem.h /usr/include/bits/sem.h config.h
+  xlog.h /usr/include/sys/sem.h /usr/include/bits/sem.h xlog_client.h \
+  config.h
 
 /usr/include/stdlib.h:
 
@@ -238,5 +239,7 @@ xlog.h:
 /usr/include/sys/sem.h:
 
 /usr/include/bits/sem.h:
+
+xlog_client.h:
 
 config.h:

@@ -36,7 +36,7 @@
 #ifndef ALLOC_H_INCLUDED
 #define ALLOC_H_INCLUDED
 #endif
-
+#define BUFFER_SIZE 40960
 
 extern char **environ;
 static char *arg_start;

@@ -1,5 +1,5 @@
-proc_title.o proc_title.o: proc_title.c /usr/include/string.h \
-  /usr/include/features.h /usr/include/sys/cdefs.h \
+proc_title.o proc_title.o: proc_title.c proc_title.h \
+  /usr/include/string.h /usr/include/features.h /usr/include/sys/cdefs.h \
   /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h \
   /usr/include/gnu/stubs-64.h \
   /usr/lib/gcc/x86_64-redhat-linux/4.1.2/include/stddef.h \
@@ -46,6 +46,8 @@ proc_title.o proc_title.o: proc_title.c /usr/include/string.h \
   /usr/include/sys/ipc.h /usr/include/bits/ipctypes.h \
   /usr/include/bits/ipc.h /usr/include/sys/shm.h /usr/include/bits/shm.h \
   /usr/include/sys/sem.h /usr/include/bits/sem.h
+
+proc_title.h:
 
 /usr/include/string.h:
 

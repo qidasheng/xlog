@@ -2,10 +2,8 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#define BUFFER_SIZE 40960
 
 int paraNum; //参数个数
-int client_socket = -1;
 int thread_socket = -1;
 FILE       *file_log;
 
@@ -23,7 +21,6 @@ extern long server_port;
 extern int  server_retry_count;
 extern int  server_retry_interval;
 long line_count = 0;
-long line_count_ok = 0;
 long line_count_total = 0;
 long line_count_ignore = 0;
 
@@ -50,124 +47,27 @@ static struct conf_public public_arr = {
 
 time_t t_start  = 0;
 
+extern void sendMsg(char *ip, unsigned int port, char *msg, int index, conf_project *c_shmaddr);
 
-int addLog(char *msg) {
-	const char *logpath = "xlog.log";
-	FILE *fp;
-        if (!(fp = fopen(logpath, "ab+"))) {
-            fprintf(stderr, _("Cannot open log file \"%s\" for read\n"), logpath);
-            exit(1);
-        }
+long  xFile(FILE *fp, char *msg, int mode) {
+	long log_offset = 0;
+	char line[1024]; 
 	if (msg != NULL) {
-		fwrite(msg, sizeof(msg), strlen(msg), fp);	
+		if ( mode = 1) {
+			fseek(fp, 0, SEEK_SET);
+			fwrite(msg, sizeof(msg), strlen(msg), fp);	
+		} else {
+			fwrite(msg, sizeof(msg), strlen(msg), fp);	
+		}
+	} else {
+		fseek(fp, 0, SEEK_SET);
+                fgets(line, 1024, fp);
+		log_offset = atoi(line);
+		return log_offset;
 	}
-	fclose(fp);
 	return 0;
 }
 
-int createConn(char *ip, unsigned int port) {
-    int client_socket = -1;
-    //设置一个socket地址结构client_addr,代表客户机internet地址, 端口
-    struct sockaddr_in client_addr;
-    bzero(&client_addr, sizeof (client_addr)); //把一段内存区的内容全部设置为0
-    client_addr.sin_family = AF_INET; //internet协议族
-    client_addr.sin_addr.s_addr = htons(INADDR_ANY); //INADDR_ANY表示自动获取本机地址
-    client_addr.sin_port = htons(0); //0表示让系统自动分配一个空闲端口
-    //创建用于internet的流协议(TCP)socket,用client_socket代表客户机socket
-    client_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (client_socket < 0) {
-        printf("Create Socket Failed!\n");
-        return -1;
-    }
-    //把客户机的socket和客户机的socket地址结构联系起来
-    if (bind(client_socket, (struct sockaddr*) &client_addr, sizeof (client_addr))) {
-        printf("Client Bind Port Failed!\n");
-	return -2; 
-   }
-
-    //make_socket_non_blocking(client_socket);
-
-    //设置一个socket地址结构server_addr,代表服务器的internet地址, 端口
-    struct sockaddr_in server_addr;
-    bzero(&server_addr, sizeof (server_addr));
-    server_addr.sin_family = AF_INET;
-
-    if (inet_aton(ip, &server_addr.sin_addr) == 0) //服务器的IP地址来自程序的参数
-    {
-        printf("Server IP Address Error!\n");
-        return -3;
-    }
-    server_addr.sin_port = htons(port);
-    socklen_t server_addr_length = sizeof (server_addr);
-    //向服务器发起连接,连接成功后client_socket代表了客户机和服务器的一个socket连接
-    if ( connect(client_socket, (struct sockaddr*) &server_addr, server_addr_length) < 0 ) 
-    {
-    	return -4;
-    }
-    struct timeval timeout = {30,0}; 
-    //设置发送超时
-    setsockopt(client_socket, SOL_SOCKET,SO_SNDTIMEO, (char *)&timeout,sizeof(struct timeval));
-    //设置接收超时
-    setsockopt(client_socket, SOL_SOCKET,SO_RCVTIMEO, (char *)&timeout,sizeof(struct timeval));
-    return client_socket;
-    /*
-    execvp(arg[0], arg);
-    perror("execvp");
-     */
-}
-
-
-void sendMsg(char *ip, unsigned int port, char *msg, int index, conf_project *c_shmaddr){
-    int retry_count = 0;
-    while (client_socket < 0 && server_retry_count > retry_count ) {
-	client_socket = createConn(ip, port);
-	retry_count++;
-	sleep(server_retry_interval);
-    }
-
-    if (client_socket < 0) {
-        printf("Can Not Connect To IP:%s,PORT:%d\n", ip, port);
-	exit(0);
-    }
-    int i;
-    int sendLen = 0;
-    int length = 0;
-    char buffer_send[BUFFER_SIZE];
-    char buffer_recv[BUFFER_SIZE];
-    bzero(buffer_send, BUFFER_SIZE);
-    bzero(buffer_recv, BUFFER_SIZE);
-    //strcpy(buffer, "输入内容为：");
-    strcat(buffer_send, msg);
-    //strcat(buffer, "\n");
-    //printf("Input data :%s", buffer_send);
-    //向服务器发送buffer中的数据
-    sendLen = send(client_socket, buffer_send, strlen(buffer_send), 0);
-    if (sendLen < 0) {
-  	printf("消息'%s'发送给%s失败！错误代码是%d，错误信息是'%s'\n", buffer_send, ip,  errno, strerror(errno));
-    }
-   
-    if (sendLen = 0) {
-    	client_socket = -1;
-    }
-
-    //从服务器接收数据到buffer中
-    length = recv(client_socket, buffer_recv, BUFFER_SIZE, 0);
-
-    if (length <= 0) {
-        printf("Recieve Data From Server %s Failed!\n", ip);
-        client_socket = -1;
-        //exit(1);
-    }
-
-    if ( strcmp(buffer_recv, "OK\n")==0 ) {
-	line_count_ok++;
-	c_shmaddr[index].count_ok = line_count_ok;
-	//printf("From Server %s :\t%s\n", ip, buffer_recv);
-    }
-    //printf("From Server %s :\t%s\n", ip, buffer_recv);
-    //printf("%s", buffer_recv);
-    //close(client_socket);client_socket = -1;
-}
 
 
 void *
@@ -422,7 +322,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	char       buf[line_max];
 	char       fork_buf[line_max];
 	size_t     osize, nsize;
-	FILE       *str;
+	FILE       *str, *offset_log;
 	char *filename;
 	filename = project[index].path;
        
@@ -430,6 +330,12 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 		fprintf(stderr, _("Cannot open web log  \"%s\" for read\n"), filename);
 		exit(1);
 	}
+
+	char *offset_log_path = "/tmp/xlog_offset_zt";
+        if (!(offset_log = fopen(offset_log_path, "rw+"))) {
+                fprintf(stderr, _("Cannot open offset log  \"%s\" for read\n"), "/tmp/xlog_offset_zt");
+                exit(1);
+        }
 
         //printf("index %d : %s : %d\n", index, project[index].config.server_addr, strlen(project[index].config.server_addr));
         //printf("p index %d : %s \n", index, public->server_addr);
@@ -440,12 +346,26 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
         server_port    =  project[index].config.server_port != 0 ?  project[index].config.server_port  : public->server_port ;
         server_retry_count    =  project[index].config.server_retry_count != 0 ?  project[index].config.server_retry_count  : public->server_retry_count ;
         server_retry_interval =  project[index].config.server_retry_interval != 0 ?  project[index].config.server_retry_interval  : public->server_retry_interval ;
-	osize = project[index].from_begin != 0 ? 0 : filesize(filename);    
-        printf("%d %s %s %d %d \n",index, filename, server_ip, server_port, osize);
         //exit(0);
         //setbuf(str, NULL);
         t_start  = get_timestamp();
+
+        int ignore_count = 0;
+        char *ignore_key[100];
+        char *p;
+        p = (char *) malloc (strlen(project[index].ignore) + 1);
+        strcpy(p, project[index].ignore);
+        while( (ignore_key[ignore_count]=strtok(p, "|+|") ) !=NULL ) {
+                ignore_count++;
+                p = NULL;
+        }
+
 	int w = 0;
+	fpos_t pos;
+	long offset_record = xFile(offset_log, NULL, 0);
+	printf("Start reading log file from the offset: %ld\r\n", offset_record);
+	osize = project[index].from_begin == 1 ? 0 : (( project[index].from_begin = 2 && offset_record) > 0 ? offset_record : filesize(filename));    
+        printf("%d %s %s %d %d \n",index, filename, server_ip, server_port, osize);
         for (osize;;) {
 		nsize = filesize(filename);
 		if (nsize > osize) {
@@ -468,12 +388,25 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 						continue;
 					}
 
-					if ( strlen(project[index].ignore) > 5  &&  strstr(buf, project[index].ignore) != NULL ) {
-						line_count_ignore++;
-						c_shmaddr[index].count_ignore = line_count_ignore;
+					int is_ignore = 0;
+                                        if ( ignore_count > 0 ) {
+                                                int i = 0;
+                                                for(i = 0; i < ignore_count; i++) {
+                                                        if (strstr(buf, ignore_key[i]) != NULL ) {
+                                                                line_count_ignore++;
+                                                                c_shmaddr[index].count_ignore = line_count_ignore;
+                                                        	printf("%s@%s\r\n", ignore_key[i], buf);
+								is_ignore = 1;
+                                                                continue;
+                                                        }
+                                                }
+                                        }
+
+					if ( is_ignore == 1) {
 						continue;
 					}
-					//printf("%s", buf);
+
+					printf("#%s\r\n", buf);
 					long int fgets_len = strlen(buf);
 					if ( fgets_len < line_max_len && fgets_len > line_min_len ) {
                                        		sendMsg(server_ip, server_port, buf, index,  c_shmaddr);
@@ -483,6 +416,11 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 							exit(-8);
 						}
 						c_shmaddr[index].count = line_count;
+						long  offset = ftell(str);
+						char offsetStr[15];
+						sprintf(offsetStr, "%ld", offset);
+                                                printf("%s\r\n", offsetStr);
+						xFile(offset_log, offsetStr, 1);
 						if(!semaphore_v()) {
 							exit(-9);
 						}

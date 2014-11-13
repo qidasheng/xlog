@@ -1,13 +1,5 @@
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include <sys/types.h>
-//#include <unistd.h>
-//#include <malloc.h>
-//#include <error.h>
-//#include <errno.h>
-#include <string.h>
-//#include <ctype.h>
-#include "xlog.h"
+#include "proc_title.h"
+
 void init_proc_title(int argc, char **argv) {
         int i;
         //printf("参数个数：%d\n",argc);
