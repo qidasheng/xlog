@@ -3,7 +3,7 @@
 #include <config.h>
 #endif
 
-int paraNum; //参数个数
+int child_num = 0;
 int thread_socket = -1;
 FILE       *file_log;
 
@@ -11,6 +11,7 @@ struct process {
         int s[2];
 };
 
+int p_arr[100];
 struct process proc[100];
 
 extern int  line_min_len;
@@ -23,6 +24,9 @@ extern int  server_retry_interval;
 long line_count = 0;
 long line_count_total = 0;
 long line_count_ignore = 0;
+char *filename;
+long  offset = 0;
+FILE *xlogFp,*offset_log;
 
 extern const char *conf_path;
 
@@ -142,15 +146,6 @@ error_handler (const char *func, char *file, int line, char *msg)
    fprintf (stderr, "\nError occured at: %s - %s - %d", file, func, line);
    fprintf (stderr, "\nMessage: %s\n\n", msg);
    exit (EXIT_FAILURE);
-}
-
-
-void add_log(char *msg) {
-	printf("写入日志：%s\n", msg);
-	sprintf(msg,"%s\n",msg);
-	if (msg != NULL) {
-		fwrite(msg, sizeof(msg), strlen(msg), file_log);	
-	}
 }
 
 
@@ -312,6 +307,40 @@ static void xlog_daemon()
     openlog ("xlog_daemon", LOG_PID, LOG_DAEMON);
 }
 
+void kill_all_child(int sig) {
+	int i = 0;
+	for( i=0; i < child_num; i++) {
+		kill(p_arr[i], SIGQUIT);
+	}
+	exit(0);
+}
+
+void signal_process (int sig) {
+       //if ( !xlogFp || !(xlogFp = fopen(filename, "r"))) {
+       //        fprintf(stderr, _("Cannot open web log  \"%s\" for read\n"), filename);
+       //        return ;
+       //}
+       if (xlogFp) {
+       		printf("xlogFp:%d \r\n", xlogFp);
+       		long  offset = ftell(xlogFp);
+       		char offsetStr[15];
+       		sprintf(offsetStr, "%ld", offset);
+       		printf("offsetStr:%s\r\n", offsetStr);
+       		if ( offset != -1 ) {
+       				xFile(offset_log, offsetStr, 1);
+       		} else {
+       				printf("offsetStr:异常\r\n");
+       		}
+       } else {
+       		printf("#xlogFp:%d \r\n", xlogFp);
+
+       }
+       if(sig != SIGALRM){
+            exit(10);
+       }
+       signal(SIGALRM, signal_process);
+       alarm(1);
+}
 
 //分析日志文件
 int listen_log(conf_public *public,conf_project *project, int index, conf_project *c_shmaddr) {
@@ -322,20 +351,18 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	char       buf[line_max];
 	char       fork_buf[line_max];
 	size_t     osize, nsize;
-	FILE       *str, *offset_log;
-	char *filename;
 	filename = project[index].path;
        
-	if (!(str = fopen(filename, "r"))) {
+	if (!(xlogFp = fopen(filename, "r"))) {
 		fprintf(stderr, _("Cannot open web log  \"%s\" for read\n"), filename);
 		exit(1);
 	}
 
 	char *offset_log_path = "/tmp/xlog_offset_zt";
-        if (!(offset_log = fopen(offset_log_path, "rw+"))) {
-                fprintf(stderr, _("Cannot open offset log  \"%s\" for read\n"), "/tmp/xlog_offset_zt");
-                exit(1);
-        }
+	if (!( offset_log = fopen(offset_log_path, "rw+") )) {
+                fprintf(stderr, _("Cannot open web offset record file  \"%s\" for read\n"), offset_log_path);
+                exit(1);        
+        } 
 
         //printf("index %d : %s : %d\n", index, project[index].config.server_addr, strlen(project[index].config.server_addr));
         //printf("p index %d : %s \n", index, public->server_addr);
@@ -348,6 +375,15 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
         server_retry_interval =  project[index].config.server_retry_interval != 0 ?  project[index].config.server_retry_interval  : public->server_retry_interval ;
         //exit(0);
         //setbuf(str, NULL);
+
+
+        signal(SIGPIPE, SIG_IGN);
+        signal (SIGINT,  signal_process);
+        signal (SIGKILL, signal_process);
+        signal (SIGQUIT, signal_process);
+        signal (SIGTERM, signal_process);
+        signal (SIGHUP,  signal_process);
+
         t_start  = get_timestamp();
 
         int ignore_count = 0;
@@ -364,19 +400,21 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	fpos_t pos;
 	long offset_record = xFile(offset_log, NULL, 0);
 	printf("Start reading log file from the offset: %ld\r\n", offset_record);
-	osize = project[index].from_begin == 1 ? 0 : (( project[index].from_begin = 2 && offset_record) > 0 ? offset_record : filesize(filename));    
+	osize = project[index].from_begin == 1 ? 0 : (project[index].from_begin = 2 && offset_record > 0 ? offset_record : filesize(filename));    
         printf("%d %s %s %d %d \n",index, filename, server_ip, server_port, osize);
+	signal(SIGALRM, signal_process);
+        alarm(1);
         for (osize;;) {
 		nsize = filesize(filename);
 		if (nsize > osize) {
-			if (!(str = fopen(filename, "r"))) {
-				fprintf(stderr, _("Cannot open \"%s\" for read\n"), filename);
-				exit(1);
-			}
-                        setvbuf(str, NULL, _IOLBF, BUFSIZ);
-			if (!fseek(str, osize, SEEK_SET)){
-				while(!feof(str)) {
-                                        fgets(buf, line_max, str);
+			//if (!(xlogFp = fopen(filename, "r"))) {
+                	//	fprintf(stderr, _("Cannot open web log  \"%s\" for read\n"), filename);
+                	//	exit(1);
+        		//}
+                        setvbuf(xlogFp, NULL, _IOLBF, BUFSIZ);
+			if (!fseek(xlogFp, osize, SEEK_SET)) {
+				while(!feof(xlogFp)) {
+                                        fgets(buf, line_max, xlogFp);
 					//if (buf == NULL || !isdigit(buf[0]) ) {
 					if (buf == NULL) {
 						continue;
@@ -416,11 +454,6 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 							exit(-8);
 						}
 						c_shmaddr[index].count = line_count;
-						long  offset = ftell(str);
-						char offsetStr[15];
-						sprintf(offsetStr, "%ld", offset);
-                                                printf("%s\r\n", offsetStr);
-						xFile(offset_log, offsetStr, 1);
 						if(!semaphore_v()) {
 							exit(-9);
 						}
@@ -428,7 +461,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 				}
 			}
 			//fflush(stdout);
-			fclose(str);
+			//fclose(xlogFp);
 			osize = nsize;
 		}
 
@@ -458,7 +491,7 @@ int main(int argc, char **argv)
 	}
 	
 	syslog (LOG_NOTICE, "Xlog first daemon started.");
-        char *conf_path = "/etc/xlog.conf";
+        char *conf_path = "/etc/xlog/xlog.conf";
 	int oc; 
         int daemon = 0;
 	while((oc = getopt(argc, argv, "c:dh")) != -1)
@@ -497,6 +530,7 @@ int main(int argc, char **argv)
                         count++;
                 }
         }
+	child_num = count;
         //fclose(fp); 
         get_conf(fp, &public_arr, project_arr);
         fclose(fp); 
@@ -636,6 +670,12 @@ int main(int argc, char **argv)
 		//printf("This is parent process%d\n",getpid());
 		int status;
 		pid_t pid,pr;
+        	signal(SIGPIPE, SIG_IGN);
+        	signal (SIGINT,  kill_all_child);
+        	signal (SIGKILL, kill_all_child);
+        	signal (SIGQUIT, kill_all_child);
+        	signal (SIGTERM, kill_all_child);
+        	signal (SIGHUP,  kill_all_child);
 		/*
 		pid=wait(&status);
 		if(status!=0)
