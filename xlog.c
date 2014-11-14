@@ -52,16 +52,28 @@ static struct conf_public public_arr = {
 time_t t_start  = 0;
 
 extern void sendMsg(char *ip, unsigned int port, char *msg, int index, conf_project *c_shmaddr);
+char *get_date();
 
 long  xFile(FILE *fp, char *msg, int mode) {
 	long log_offset = 0;
 	char line[1024]; 
 	if (msg != NULL) {
-		if ( mode = 1) {
+		if ( mode == 1) {
+			printf("$%s\r\n", msg);
 			fseek(fp, 0, SEEK_SET);
-			fwrite(msg, sizeof(msg), strlen(msg), fp);	
+			fwrite(msg, strlen(msg), 1, fp);	
 		} else {
-			fwrite(msg, sizeof(msg), strlen(msg), fp);	
+			char *date = get_date();
+			printf("#%s %s\r\n", msg, date);
+			fseek(fp, 0, SEEK_END);
+			char *log_info;
+			long info_len = strlen(date) + strlen("	") + strlen(msg)  + strlen("\r\n") + 1;
+			log_info = (char *) malloc(info_len);
+			if (log_info != NULL) { 
+				sprintf(log_info, "%s	%s\r\n", date, msg);
+				fwrite(log_info, info_len, 1, fp);
+				free(log_info);	
+			}
 		}
 	} else {
 		fseek(fp, 0, SEEK_SET);
@@ -97,7 +109,13 @@ void sig_handler( int sig)
        }
 }
 
-
+char *get_date() {
+    time_t t = time(0);
+    //http://blog.csdn.net/haiwil/article/details/6691854/
+    static char s[32];
+    strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S", localtime(&t));
+    return s;
+}
 
 
 unsigned long long get_datetime() {
@@ -107,7 +125,7 @@ unsigned long long get_datetime() {
     struct tm *p;
     time(&timep);
     p = localtime(&timep);
-    sprintf(datetimestr,"%d%d%d%d%d%d", (1900+p->tm_year), (1+p->tm_mon), p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+    sprintf(datetimestr, "%d%d%d%d%d%d", (1900+p->tm_year), (1+p->tm_mon), p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
     datetime = atoll(datetimestr);
     return datetime;
 }
@@ -328,6 +346,7 @@ void signal_process (int sig) {
        		printf("offsetStr:%s\r\n", offsetStr);
        		if ( offset != -1 ) {
        				xFile(offset_log, offsetStr, 1);
+       				xFile(file_log, offsetStr, 2);
        		} else {
        				printf("offsetStr:异常\r\n");
        		}
@@ -433,7 +452,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
                                                         if (strstr(buf, ignore_key[i]) != NULL ) {
                                                                 line_count_ignore++;
                                                                 c_shmaddr[index].count_ignore = line_count_ignore;
-                                                        	printf("%s@%s\r\n", ignore_key[i], buf);
+                                                        	//printf("%s@%s\r\n", ignore_key[i], buf);
 								is_ignore = 1;
                                                                 continue;
                                                         }
@@ -444,7 +463,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 						continue;
 					}
 
-					printf("#%s\r\n", buf);
+					//printf("#%s\r\n", buf);
 					long int fgets_len = strlen(buf);
 					if ( fgets_len < line_max_len && fgets_len > line_min_len ) {
                                        		sendMsg(server_ip, server_port, buf, index,  c_shmaddr);
@@ -662,12 +681,10 @@ int main(int argc, char **argv)
 				break;
 			}
 		}
-		//exit(0);
 	}else{
 		char f_title[1000] = "xlog master ";
                 strcat(f_title, conf_path);
 		set_proc_title(f_title);
-		//printf("This is parent process%d\n",getpid());
 		int status;
 		pid_t pid,pr;
         	signal(SIGPIPE, SIG_IGN);
@@ -676,23 +693,6 @@ int main(int argc, char **argv)
         	signal (SIGQUIT, kill_all_child);
         	signal (SIGTERM, kill_all_child);
         	signal (SIGHUP,  kill_all_child);
-		/*
-		pid=wait(&status);
-		if(status!=0)
-			printf("Child Process with PID %ld aborted with  status   %d\n", (long)pid, status, get_timestamp());
-                */
-
-                //printf("fork_f_buf_start\n");
-                //while(1) {
-                //        if ((r = read (proc[99].s[1], fork_f_buf, BUFFER)) == -1) {
-                //                printf("read socket error\n");
-                //                exit(4);
-                //        } else {
-                //                printf("fork_f_buf%s\n", fork_f_buf);
-
-                //        }
-                //        sleep(1);
-                //}
 		pr = wait(&status);
 		if(WIFEXITED(status)){
 			printf("\nthe child process %d exit normally\n", pr);
