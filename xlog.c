@@ -58,23 +58,27 @@ long  xFile(FILE *fp, char *msg, int mode) {
 	long log_offset = 0;
 	char line[1024]; 
 	if (msg != NULL) {
+		char *log_info;
+		char *date;
+		long info_len;
 		if ( mode == 1) {
-			printf("$%s\r\n", msg);
-			fseek(fp, 0, SEEK_SET);
-			fwrite(msg, strlen(msg), 1, fp);	
+			info_len = strlen(msg)  + strlen("\r\n") + 1;
 		} else {
-			char *date = get_date();
-			printf("#%s %s\r\n", msg, date);
-			fseek(fp, 0, SEEK_END);
-			char *log_info;
-			long info_len = strlen(date) + strlen("	") + strlen(msg)  + strlen("\r\n") + 1;
-			log_info = (char *) malloc(info_len);
-			if (log_info != NULL) { 
+			date = get_date();
+			info_len = strlen(date) + strlen("	") + strlen(msg)  + strlen("\r\n") + 1;
+		}
+		log_info = (char *) malloc(info_len);
+		if (log_info != NULL) { 
+		        if ( mode == 1) {
+				fseek(fp, 0, SEEK_SET);
+				sprintf(log_info, "%s\r\n", msg);
+			} else {
+				fseek(fp, 0, SEEK_END);
 				sprintf(log_info, "%s	%s\r\n", date, msg);
-				fwrite(log_info, info_len, 1, fp);
-				free(log_info);	
 			}
 		}
+		fwrite(log_info, info_len, 1, fp);
+		free(log_info);	
 	} else {
 		fseek(fp, 0, SEEK_SET);
                 fgets(line, 1024, fp);
@@ -117,6 +121,18 @@ char *get_date() {
     return s;
 }
 
+char * xl_str_contact(const char *first,const char *second)
+{
+     char *result;
+     result = (char*) malloc(strlen(first) + strlen(second) + 1); 
+     if( !result ){ //如果内存动态分配失败
+        printf("Error: malloc failed\n");
+        exit(EXIT_FAILURE);
+     }
+     strcpy(result, first); 
+     strcat(result, second); //字符串拼接
+     return result;
+}
 
 unsigned long long get_datetime() {
     unsigned long long datetime = 0;
@@ -334,16 +350,12 @@ void kill_all_child(int sig) {
 }
 
 void signal_process (int sig) {
-       //if ( !xlogFp || !(xlogFp = fopen(filename, "r"))) {
-       //        fprintf(stderr, _("Cannot open web log  \"%s\" for read\n"), filename);
-       //        return ;
-       //}
        if (xlogFp) {
-       		printf("xlogFp:%d \r\n", xlogFp);
+       		//printf("xlogFp:%d \r\n", xlogFp);
        		long  offset = ftell(xlogFp);
        		char offsetStr[15];
        		sprintf(offsetStr, "%ld", offset);
-       		printf("offsetStr:%s\r\n", offsetStr);
+       		//printf("offsetStr:%s\r\n", offsetStr);
        		if ( offset != -1 ) {
        				xFile(offset_log, offsetStr, 1);
        				xFile(file_log, offsetStr, 2);
@@ -352,7 +364,6 @@ void signal_process (int sig) {
        		}
        } else {
        		printf("#xlogFp:%d \r\n", xlogFp);
-
        }
        if(sig != SIGALRM){
             exit(10);
@@ -364,9 +375,10 @@ void signal_process (int sig) {
 //分析日志文件
 int listen_log(conf_public *public,conf_project *project, int index, conf_project *c_shmaddr) {
 	//printf("pid is :%ld\n", project[index].pid);
-	int count = 0;
 	char       buffer[BUFFER];
 	int        line_max = 32 * 1024;
+	int 	   line_count = 0;
+	int 	   valid_count = 0;
 	char       buf[line_max];
 	char       fork_buf[line_max];
 	size_t     osize, nsize;
@@ -389,7 +401,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
         line_max_len          =  project[index].config.line_max_len != 0 ?  project[index].config.line_max_len  : public->line_max_len ;
         line_count_per        =  project[index].config.line_count_per != 0 ?  project[index].config.line_count_per  : public->line_count_per ;
         server_ip             =  strlen(project[index].config.server_addr) > 0 ?  project[index].config.server_addr  : public->server_addr ;
-        server_port    =  project[index].config.server_port != 0 ?  project[index].config.server_port  : public->server_port ;
+        server_port    	      =  project[index].config.server_port != 0 ?  project[index].config.server_port  : public->server_port ;
         server_retry_count    =  project[index].config.server_retry_count != 0 ?  project[index].config.server_retry_count  : public->server_retry_count ;
         server_retry_interval =  project[index].config.server_retry_interval != 0 ?  project[index].config.server_retry_interval  : public->server_retry_interval ;
         //exit(0);
@@ -408,6 +420,8 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
         int ignore_count = 0;
         char *ignore_key[100];
         char *p;
+        char *multi_line_log = NULL;
+	multi_line_log = xl_str_contact("" , "");
         p = (char *) malloc (strlen(project[index].ignore) + 1);
         strcpy(p, project[index].ignore);
         while( (ignore_key[ignore_count]=strtok(p, "|+|") ) !=NULL ) {
@@ -463,19 +477,28 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 						continue;
 					}
 
-					//printf("#%s\r\n", buf);
 					long int fgets_len = strlen(buf);
 					if ( fgets_len < line_max_len && fgets_len > line_min_len ) {
-                                       		sendMsg(server_ip, server_port, buf, index,  c_shmaddr);
+						multi_line_log = xl_str_contact(multi_line_log , buf);
 						line_count++;
-						//进入临界区
-						if(!semaphore_p()) {
-							exit(-8);
+						valid_count++;
+						//printf("#%d %d %s\r\n", line_count, line_count_per, buf);
+						if ( line_count >= line_count_per ) {
+							//printf("@@@@%s\r\n", multi_line_log);
+                                       			sendMsg(server_ip, server_port, multi_line_log, index,  c_shmaddr);
+							line_count = 0;
+							free(multi_line_log);
+							multi_line_log = NULL;
+							multi_line_log = xl_str_contact("" , "");
 						}
-						c_shmaddr[index].count = line_count;
-						if(!semaphore_v()) {
-							exit(-9);
-						}
+						////进入临界区
+						//if(!semaphore_p()) {
+						//	exit(-8);
+						//}
+						c_shmaddr[index].count = valid_count;
+						//if(!semaphore_v()) {
+						//	exit(-9);
+						//}
 					}
 				}
 			}
@@ -489,7 +512,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 			osize = 0;
 		}
 		time_t t_end  = get_timestamp();
-		usleep(1000000);         /* 250mS */
+		usleep(1000000);         /* 1s = 1000000 ms */
 	}
 	return 1;
 }

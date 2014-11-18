@@ -77,13 +77,16 @@ void sendMsg(char *ip, unsigned int port, char *msg, int index, conf_project *c_
         printf("Recieve Data From Server %s Failed!\n", ip);
         client_socket = -1;
         //exit(1);
-    }
-
-    if ( strcmp(buffer_recv, "OK\n")==0 ) {
+    } else {
         line_count_ok++;
         c_shmaddr[index].count_ok = line_count_ok;
-        //printf("From Server %s :\t%s\n", ip, buffer_recv);
     }
+
+    //if ( strcmp(buffer_recv, "OK\n")==0 ) {
+    //    line_count_ok++;
+    //    c_shmaddr[index].count_ok = line_count_ok;
+    //    //printf("From Server %s :\t%s\n", ip, buffer_recv);
+    //}
     //printf("From Server %s :\t%s\n", ip, buffer_recv);
     //printf("%s", buffer_recv);
     //close(client_socket);client_socket = -1;
