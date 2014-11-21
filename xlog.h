@@ -38,12 +38,19 @@
 #endif
 #define BUFFER_SIZE 40960
 
+#define debug(...) \
+do {  \
+snprintf(logMsg, 1024, __VA_ARGS__); \
+addLog(logMsg); \
+} while (0);
+
 extern char **environ;
 static char *arg_start;
 static char *arg_end;
 static char *env_start;
 
 
+char logMsg[1025];
 
 typedef struct conf_public {
         int  line_min_len;

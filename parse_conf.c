@@ -5,27 +5,25 @@ void xstrcpy (char *p, const char *buf) {
 }
 
 
-static struct conf_project * init_conf_project (void)
-{
-   struct conf_project *project;
-
-   if ((project = malloc (sizeof (*project))) == NULL)
-      return NULL;
-   project->pid = 0;
-   project->count = 0;
-   project->count_ok = 0;
-   project->count_total = 0;
-   project->count_ignore = 0;
-
-   return project;
+static struct conf_project * init_conf_project (void)	{
+	struct conf_project *project;
+	if ((project = malloc (sizeof (*project))) == NULL) {
+	     return NULL;
+	}
+	project->pid = 0;
+	project->count = 0;
+	project->count_ok = 0;
+	project->count_total = 0;
+	project->count_ignore = 0;
+	
+	return project;
 }
 
 
 
 
-int parse_project(char *line, conf_public *public_arr,  conf_project *project_arr, int index) 
-{
-        if (line == NULL || line == "\r\n" || line[0] == "#") {
+int parse_project(char *line, conf_public *public_arr,  conf_project *project_arr, int index) {
+        if ( strlen(line) < 3 || line == NULL || line == "\r\n" ||  line[0] == '#' ) {
                 return 0;
         }
         const char *key, *val;
@@ -102,17 +100,17 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
 
 
 int get_conf(FILE *f, conf_public *public_arr, conf_project *project_arr) {    
-    char       buf[BUFFER];
-    char       conf_line[1024];
+    	char       buf[BUFFER];
+    	char       conf_line[1024];
 	int n = 0;
 
-    int is_project_conf = 0;
-    int project_conf_index = 0;
+	int is_project_conf = 0;
+	int project_conf_index = 0;
 	int project_index = 0;
 	fseek(f, 0, SEEK_SET);
 	while(!feof(f)) {
 		fgets(conf_line, 1024, f);
-        if (strstr(conf_line, "[project]") != NULL) { 
+        	if (strstr(conf_line, "[project]") != NULL) { 
 			is_project_conf = 1;
 			project_conf_index = 0;
 			project_index++;

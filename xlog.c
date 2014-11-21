@@ -3,6 +3,8 @@
 #include <config.h>
 #endif
 
+
+
 int child_num = 0;
 int thread_socket = -1;
 FILE       *file_log;
@@ -74,7 +76,7 @@ long  xFile(FILE *fp, char *msg, int mode) {
 				sprintf(log_info, "%s\r\n", msg);
 			} else {
 				fseek(fp, 0, SEEK_END);
-				sprintf(log_info, "%s	%s\r\n", date, msg);
+				sprintf(log_info, "%s, %s\r\n", date, msg);
 			}
 		}
 		fwrite(log_info, info_len, 1, fp);
@@ -88,49 +90,33 @@ long  xFile(FILE *fp, char *msg, int mode) {
 	return 0;
 }
 
-
-
-void *
-debug_malloc(size_t size, const char *file, int line, const char *func)
-{
-        void *p;
-        p = malloc(size);
-        //printf("%s:%d:%s:malloc(%ld): p=0x%lx\n", file, line, func, size, (unsigned long)p);
-        return p;
+void addLog (char *msg) {
+	xFile(file_log, msg, 2);
 }
-/*
-#define malloc(s) debug_malloc(s, __FILE__, __LINE__, __func__)
-#define free(p)  do {                                                   \
-        printf("%s:%d:%s:free(0x%lx)\n", __FILE__, __LINE__,            \
-            __func__, (unsigned long)p);                                \
-} while (0)
-*/
 
-void sig_handler( int sig)
-{
-       if(sig == SIGUSR1){
+
+void sig_handler( int sig) {
+       if( sig == SIGUSR1 ) {
 	    get_conf();
        }
 }
 
 char *get_date() {
     time_t t = time(0);
-    //http://blog.csdn.net/haiwil/article/details/6691854/
     static char s[32];
     strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S", localtime(&t));
     return s;
 }
 
-char * xl_str_contact(const char *first,const char *second)
-{
+char * xl_str_contact(char *first, char *second) {
      char *result;
-     result = (char*) malloc(strlen(first) + strlen(second) + 1); 
-     if( !result ){ //如果内存动态分配失败
-        printf("Error: malloc failed\n");
+     result = (char*) malloc(strlen(first) + strlen(second) + 1);
+     if( result == NULL ){
+	debug("Error: malloc failed\n");
         exit(EXIT_FAILURE);
      }
-     strcpy(result, first); 
-     strcat(result, second); //字符串拼接
+     strcpy(result, first);
+     strcat(result, second);
      return result;
 }
 
@@ -158,24 +144,8 @@ time_t get_timestamp() {
 
 
 
-/* macro for easily allocating memory */
-#define MALLOC_STRUCT(target, size)                 \
-do {                                                \
-	target = malloc(sizeof * target * size);         \
-	if (target) {                                    \
-		size_t i;                                     \
-		for (i = 0; i < size; i++) {                  \
-			target[i] = malloc(sizeof * target[i]);	 \
-		}                                             \
-	}                                                \
-} while (0);
-
-
-void
-error_handler (const char *func, char *file, int line, char *msg)
-{
-   fprintf (stderr, "\nxlog_format - version %s - %s %s\n", "0.1",
-            __DATE__, __TIME__);
+void error_handler (const char *func, char *file, int line, char *msg) {
+   fprintf (stderr, "\nxlog - version %s - %s %s\n", "0.1",  __DATE__, __TIME__);
    fprintf (stderr, "\nAn error has occurred");
    fprintf (stderr, "\nError occured at: %s - %s - %d", file, func, line);
    fprintf (stderr, "\nMessage: %s\n\n", msg);
@@ -183,25 +153,10 @@ error_handler (const char *func, char *file, int line, char *msg)
 }
 
 
-char *
-alloc_string (const char *str)
-{
-   char *new = malloc (strlen (str) + 1);
-   if (new == NULL)
-      error_handler (__PRETTY_FUNCTION__,
-                     __FILE__, __LINE__, "Unable to allocate memory");
-   strcpy (new, str);
-   return new;
-}
 
 
 
-
-
-
-
-char *rtrim_str (char *str)
-{
+char *rtrim_str (char *str) {
    char *p;
    if (!str)
       return NULL;
@@ -212,7 +167,7 @@ char *rtrim_str (char *str)
    return str;
 }
 
-char *ltrim_str (char *str){
+char *ltrim_str (char *str) {
    char *p;
    if (!str)
       return NULL;
@@ -224,20 +179,18 @@ char *ltrim_str (char *str){
 
 }
 
-char *trim_str (char *str){
+
+char *trim_str (char *str) {
    return ltrim_str(rtrim_str(str));
 }
 
 
 
-static size_t filesize(const char *filename)
-{
+static size_t filesize(const char *filename) {
     struct stat sb;
     if (!stat(filename, &sb)) return sb.st_size;
     return 0;
 }
-
-
 
 int is_ip_start(const char *buf) {
         char *p;
@@ -286,10 +239,11 @@ int is_ip_start(const char *buf) {
         return 1;
 }
 
+int file_exists(char *filename) {
+	return (access(filename, 0) == 0);
+}
 
-
-static void xlog_daemon()
-{
+static void xlog_daemon() {
     pid_t pid;
 
     /* Fork off the parent process */
@@ -355,13 +309,9 @@ void signal_process (int sig) {
        		long  offset = ftell(xlogFp);
        		char offsetStr[15];
        		sprintf(offsetStr, "%ld", offset);
-       		//printf("offsetStr:%s\r\n", offsetStr);
        		if ( offset != -1 ) {
-       				xFile(offset_log, offsetStr, 1);
-       				xFile(file_log, offsetStr, 2);
-       		} else {
-       				printf("offsetStr:异常\r\n");
-       		}
+       				addLog(offsetStr);
+       		}    	
        } else {
        		printf("#xlogFp:%d \r\n", xlogFp);
        }
@@ -372,9 +322,7 @@ void signal_process (int sig) {
        alarm(1);
 }
 
-//分析日志文件
 int listen_log(conf_public *public,conf_project *project, int index, conf_project *c_shmaddr) {
-	//printf("pid is :%ld\n", project[index].pid);
 	char       buffer[BUFFER];
 	int        line_max = 32 * 1024;
 	int 	   line_count = 0;
@@ -385,18 +333,22 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	filename = project[index].path;
        
 	if (!(xlogFp = fopen(filename, "r"))) {
-		fprintf(stderr, _("Cannot open web log  \"%s\" for read\n"), filename);
+		debug("Cannot open web log  \"%s\" for read\n", filename);
 		exit(1);
 	}
 
-	char *offset_log_path = "/tmp/xlog_offset_zt";
+	char *offset_log_path = xl_str_contact("/tmp/xlog_offset_", project[index].name);
+
+	if( !file_exists(offset_log_path) )   {
+		FILE *fc = fopen(offset_log_path, "w+");
+		fclose(fc);
+	}   
+
 	if (!( offset_log = fopen(offset_log_path, "rw+") )) {
-                fprintf(stderr, _("Cannot open web offset record file  \"%s\" for read\n"), offset_log_path);
+                debug("Cannot open offset record file  \"%s\"\n", offset_log_path);
                 exit(1);        
         } 
 
-        //printf("index %d : %s : %d\n", index, project[index].config.server_addr, strlen(project[index].config.server_addr));
-        //printf("p index %d : %s \n", index, public->server_addr);
         line_min_len          =  project[index].config.line_min_len != 0 ?  project[index].config.line_min_len  : public->line_min_len ;
         line_max_len          =  project[index].config.line_max_len != 0 ?  project[index].config.line_max_len  : public->line_max_len ;
         line_count_per        =  project[index].config.line_count_per != 0 ?  project[index].config.line_count_per  : public->line_count_per ;
@@ -404,9 +356,6 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
         server_port    	      =  project[index].config.server_port != 0 ?  project[index].config.server_port  : public->server_port ;
         server_retry_count    =  project[index].config.server_retry_count != 0 ?  project[index].config.server_retry_count  : public->server_retry_count ;
         server_retry_interval =  project[index].config.server_retry_interval != 0 ?  project[index].config.server_retry_interval  : public->server_retry_interval ;
-        //exit(0);
-        //setbuf(str, NULL);
-
 
         signal(SIGPIPE, SIG_IGN);
         signal (SIGINT,  signal_process);
@@ -420,8 +369,10 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
         int ignore_count = 0;
         char *ignore_key[100];
         char *p;
-        char *multi_line_log = NULL;
-	multi_line_log = xl_str_contact("" , "");
+        char *multi_line_log ;
+	multi_line_log = (char *) malloc(line_max * (line_count_per + 1));
+	strcpy(multi_line_log, "");
+	
         p = (char *) malloc (strlen(project[index].ignore) + 1);
         strcpy(p, project[index].ignore);
         while( (ignore_key[ignore_count]=strtok(p, "|+|") ) !=NULL ) {
@@ -432,9 +383,9 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	int w = 0;
 	fpos_t pos;
 	long offset_record = xFile(offset_log, NULL, 0);
-	printf("Start reading log file from the offset: %ld\r\n", offset_record);
+	debug("Start reading %s from the offset: %ld\r\n", filename,  offset_record);
 	osize = project[index].from_begin == 1 ? 0 : (project[index].from_begin = 2 && offset_record > 0 ? offset_record : filesize(filename));    
-        printf("%d %s %s %d %d \n",index, filename, server_ip, server_port, osize);
+        debug("%d %s %s %d %d \n",index, filename, server_ip, server_port, osize);
 	signal(SIGALRM, signal_process);
         alarm(1);
         for (osize;;) {
@@ -448,7 +399,6 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 			if (!fseek(xlogFp, osize, SEEK_SET)) {
 				while(!feof(xlogFp)) {
                                         fgets(buf, line_max, xlogFp);
-					//if (buf == NULL || !isdigit(buf[0]) ) {
 					if (buf == NULL) {
 						continue;
 					}
@@ -466,7 +416,6 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
                                                         if (strstr(buf, ignore_key[i]) != NULL ) {
                                                                 line_count_ignore++;
                                                                 c_shmaddr[index].count_ignore = line_count_ignore;
-                                                        	//printf("%s@%s\r\n", ignore_key[i], buf);
 								is_ignore = 1;
                                                                 continue;
                                                         }
@@ -479,17 +428,13 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 
 					long int fgets_len = strlen(buf);
 					if ( fgets_len < line_max_len && fgets_len > line_min_len ) {
-						multi_line_log = xl_str_contact(multi_line_log , buf);
+						strcat(multi_line_log , buf);
 						line_count++;
 						valid_count++;
-						//printf("#%d %d %s\r\n", line_count, line_count_per, buf);
 						if ( line_count >= line_count_per ) {
-							//printf("@@@@%s\r\n", multi_line_log);
                                        			sendMsg(server_ip, server_port, multi_line_log, index,  c_shmaddr);
 							line_count = 0;
-							free(multi_line_log);
-							multi_line_log = NULL;
-							multi_line_log = xl_str_contact("" , "");
+							strcpy(multi_line_log, "");
 						}
 						////进入临界区
 						//if(!semaphore_p()) {
@@ -505,14 +450,14 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 			//fflush(stdout);
 			//fclose(xlogFp);
 			osize = nsize;
+			
 		}
 
-                //异常处理:日志搜集过程中，日志文件被外部操作清空，这种情况下从头开始搜集日志
                 if (nsize < osize) {
 			osize = 0;
 		}
 		time_t t_end  = get_timestamp();
-		usleep(1000000);         /* 1s = 1000000 ms */
+		usleep(1000000);  
 	}
 	return 1;
 }
@@ -557,15 +502,13 @@ int main(int argc, char **argv)
 		}
 	}
 	
-	//filename = argv[1];
 	int ch;
         int count = 0;
         if (!(fp = fopen(conf_path, "r"))) {
-        	fprintf(stderr, _("Cannot open configure file \"%s\" for read\n"), conf_path);
+        	debug("Cannot open configure file \"%s\" for read\n", conf_path);
         	exit(1);
     	}
 
-      //统计日志文件数目，后面会生产相应个数的子进程，每个子进程负责分析一个日志文件
         while(!feof(fp)) {
 		fgets(conf_line, 1024, fp);
                 if (strstr(conf_line, "[project]") != NULL) {
@@ -573,14 +516,16 @@ int main(int argc, char **argv)
                 }
         }
 	child_num = count;
-        //fclose(fp); 
         get_conf(fp, &public_arr, project_arr);
         fclose(fp); 
-	//printf("project_arr:%s - > %d",project_arr[0].log_path, project_index);
-	//exit(0);
+
+        if( !file_exists(public_arr.log_file) )   {
+                FILE *fc = fopen(public_arr.log_file, "w+");
+                fclose(fc);
+        }
 	
         if (!(file_log = fopen(public_arr.log_file, "a+"))) {
-                fprintf(stderr, _("Cannot open xlog log  \"%s\" for read\n"), public_arr.log_file);
+                debug("Cannot open xlog log  \"%s\" for read\n", public_arr.log_file);
                 exit(1);
         }
 
@@ -588,7 +533,7 @@ int main(int argc, char **argv)
 	if ( daemon == 1 || strcmp(public_arr.daemonize, "yes") == 0) {
         	xlog_daemon();
 	}
-        //signal(SIGINT, ctrlcHandle);
+
         signal(SIGUSR1, sig_handler);  
 		
 		
@@ -597,82 +542,61 @@ int main(int argc, char **argv)
         int p_arr[count];
 	int status,i,j;
 
-         int shmid;
-         key_t key_shm = ftok("/tmp/xlog_shm", (int)"q");  
-         shmid= shmget(key_shm, sizeof(project_arr), IPC_CREAT);
-         if(shmid== -1){                            // 申请共享内存失败
-                   printf("create share memory failed : %s\n", strerror(errno));
-                   exit(-1);
-         }
+        int shmid;
+        key_t key_shm = ftok("/tmp", 147);  
+        shmid= shmget(key_shm, sizeof(project_arr), IPC_CREAT);
+        if(shmid== -1){                      
+                  debug("create share memory failed : %s\n", strerror(errno));
+                  exit(-1);
+        }
          
-        key_t key_sem = ftok("/tmp/xlog_sem", (int)'a');  
-	//创建信号量
+        key_t key_sem = ftok("/var", 147);  
 	sem_id = semget(key_sem, 1, 0666 | IPC_CREAT);
 
-		//程序第一次被调用，初始化信号量
-	if(!set_semvalue())
-	{
-		fprintf(stderr, "Failed to initialize semaphore\n");
+	if(!set_semvalue()){
+		debug("Failed to initialize semaphore\n");
 		exit(EXIT_FAILURE);
 	}
 
         if(socketpair(AF_UNIX, SOCK_STREAM, 0, proc[99].s) == -1) {
-                printf("create unnamed socket pair failed");
+                debug("create unnamed socketpair failed");
                 exit(2);
         }
         //生产子进程
 	for(i=0;i<count;i++)
 	{
 		if(socketpair(AF_UNIX, SOCK_STREAM, 0, proc[i].s) == -1) {
-			printf("create unnamed socket pair failed");
+			debug("create unnamed socket pair failed");
 			exit(2);
 		}
-		//fcntl(proc[i].s[0], F_SETFL, fcntl(proc[i].s[0], F_GETFL, 0) | O_NONBLOCK);   
-		//fcntl(proc[i].s[1], F_SETFL, fcntl(proc[i].s[0], F_GETFL, 0) | O_NONBLOCK);   
-		//fcntl(proc[i].s[0],F_SETFD, FD_CLOEXEC);
-		//fcntl(proc[i].s[1],F_SETFD, FD_CLOEXEC);
 		status=fork();
 		if(status==-1) {
 		} else if (status == 0) {
-                        //记录进程PID,后面主体部分通过PID确定当前子进程是fork的第几个子进程
 			p_arr[i] = getpid();
 			project_arr[i].pid = p_arr[i];
-                        //很关键的地方,退出循环，避免子进程进入循环创建子进程 
 			break;
 		} else {
 			p_arr[i] = status;
 		};
 	}
-        //初始化进程名称、参数、环境变量等信息，为修改进程名称做准备
 	init_proc_title(argc,argv);
 	if(status==-1) {
 		perror("fork");
 		abort();  
-	}else if(status==0){
+	} else if (status==0){
 		pid_t gcid = getpid();
 		pid_t gpid = getppid();
-		//printf("This is child process:%d,parent process:%d,count %d\n",gcid,gpid,count);
 		int m;
 		for(m = 0;m<count;m++) {
-			//printf("p_arr[%d]:%d\n", m, p_arr[m]);
-			//printf("fstr[%d] :%s\n", m, fstr[m]);
-			//当前子进程名和进程列表中某个PID相等，就用当前下标作为当前子进程的位置标示
 			if (p_arr[m] == gcid) {
-                                //printf("我是第 %d 个子进程\n", m + 1);
 				char c_title[100] = "xlog worker: ";
-				//printf("fstr[%d] :%s\n", m, fstr[m]);
 				strcat(c_title, project_arr[m].path);
-                                //设置子进程名称
 				set_proc_title(c_title);
-                                //当前子进程通知它之前的进程接收自己的进程PID信息
-				//#close(proc[m].s[0]);
 				for(j=0;j<m;j++) {
-					//#close(proc[j].s[1]);
 					char pid_str[5];
 					sprintf(pid_str, "%d", p_arr[m]);
-					//itoa(p_arr[i], pid_str, 10);
 					if ( (w = write(proc[j].s[0], pid_str, strlen(pid_str))) == -1) {
-						printf("write socket error\n");
+						debug("write socketpair error\n");
 						exit(3);
 					}   
                                          
@@ -680,32 +604,26 @@ int main(int argc, char **argv)
 				char pid_str_r[10];
 				memset(pid_str_r, 0, 10);
                                 int get_c = 0;
-                                //除了最后一个子进程有所有进程的ID信息外，其它的子进程都从后面的进程获取信息
 				while(m < count - 1) {
 					if ((r = read (proc[m].s[1], pid_str_r, 5)) == -1) {
-						printf("read socket error\n");
+						debug("read socketpair error\n");
 						exit(4);
 					} else {
 						p_arr[m] = atoi(pid_str_r);
                                                 get_c = get_c + 1;
-						//printf("%d read pid %s\n",gcid, pid_str_r);
-                                                //当前进程读取完后续子进程的PID退出循环，让程序继续后面的逻辑
                                                 if (get_c >= count - m - 1) {
-                                                        //printf("%d 读了 %d 个\n", gcid, get_c);
                                                     	break;
                                                 }
 					}
                                 }
 				struct conf_project *c_shmaddr;
-                                c_shmaddr = shmat(shmid,NULL,0);       // 映射到子进程之中一个地址，具体由kernel 指配
-                                //开始干子进程应该干的正事
+                                c_shmaddr = shmat(shmid,NULL,0);     
 				listen_log(&public_arr, project_arr, m, c_shmaddr);
-				//listen_log(&public_arr, c_shmaddr, m);
 				break;
 			}
 		}
 	}else{
-		char f_title[1000] = "xlog master ";
+		char f_title[1000] = "xlog master: ";
                 strcat(f_title, conf_path);
 		set_proc_title(f_title);
 		int status;
@@ -718,10 +636,10 @@ int main(int argc, char **argv)
         	signal (SIGHUP,  kill_all_child);
 		pr = wait(&status);
 		if(WIFEXITED(status)){
-			printf("\nthe child process %d exit normally\n", pr);
-			printf("\nthe return code is %d\n",WEXITSTATUS(status));
+			debug("\nthe child process %d exit normally\n", pr);
+			debug("\nthe return code is %d\n",WEXITSTATUS(status));
 		}else{
-			printf("\nthe child process %d exit abnormally\n", pr);
+			debug("\nthe child process %d exit abnormally\n", pr);
 		}
 		del_semvalue();
 	}

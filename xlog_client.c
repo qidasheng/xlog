@@ -84,7 +84,7 @@ int main(int argc, char **argv)
         int status,i,j;
 
         int shmid;
-        key_t key_shm = ftok("/tmp/xlog_shm", (int)"q");
+        key_t key_shm = ftok("/tmp", 147);
         shmid= shmget(key_shm, sizeof(project_arr), IPC_CREAT);
         if(shmid== -1){                            // 申请共享内存失败
                   printf("create share memory failed : %s\n", strerror(errno));
