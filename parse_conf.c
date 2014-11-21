@@ -50,21 +50,21 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
                         } else if ((key_name = "ignore" , strcmp(key, key_name))==0) {                         
                                 xstrcpy(project_arr[index].ignore ,val);						
                         } else {
-							if ((key_name = "line_min_len" , strcmp(key, key_name))==0) {
-									project_arr[index].config.line_min_len = atoi(val);
-							} else if ((key_name = "line_max_len" , strcmp(key, key_name)) == 0) {
-									project_arr[index].config.line_max_len = atoi(val);
-							} else if ((key_name = "line_count_per" , strcmp(key, key_name))==0) {
-									project_arr[index].config.line_count_per = atoi(val);
-							} else if ((key_name = "server_addr" , strcmp(key, key_name))==0) {
-									xstrcpy(project_arr[index].config.server_addr, val);
-							} else if ((key_name = "server_port" , strcmp(key, key_name))==0) {
-									project_arr[index].config.server_port = atoi(val);
-							} else if ((key_name = "server_retry_count" , strcmp(key, key_name))==0) {
-									project_arr[index].config.server_retry_count = atoi(val);
-							} else if ((key_name = "server_retry_interval" , strcmp(key, key_name))==0) {
-									project_arr[index].config.server_retry_interval = atoi(val);								
-							}
+				if ((key_name = "line_min_len" , strcmp(key, key_name))==0) {
+						project_arr[index].config.line_min_len = atoi(val);
+				} else if ((key_name = "line_max_len" , strcmp(key, key_name)) == 0) {
+						project_arr[index].config.line_max_len = atoi(val);
+				} else if ((key_name = "line_count_per" , strcmp(key, key_name))==0) {
+						project_arr[index].config.line_count_per = atoi(val);
+				} else if ((key_name = "server_addr" , strcmp(key, key_name))==0) {
+						xstrcpy(project_arr[index].config.server_addr, val);
+				} else if ((key_name = "server_port" , strcmp(key, key_name))==0) {
+						project_arr[index].config.server_port = atoi(val);
+				} else if ((key_name = "server_retry_count" , strcmp(key, key_name))==0) {
+						project_arr[index].config.server_retry_count = atoi(val);
+				} else if ((key_name = "server_retry_interval" , strcmp(key, key_name))==0) {
+						project_arr[index].config.server_retry_interval = atoi(val);								
+				}
                 
 		       }
 		} else {
