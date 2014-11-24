@@ -304,22 +304,21 @@ void kill_all_child(int sig) {
 }
 
 void signal_process (int sig) {
-       if (xlogFp) {
-       		//printf("xlogFp:%d \r\n", xlogFp);
-       		long  offset = ftell(xlogFp);
-       		char offsetStr[15];
-       		sprintf(offsetStr, "%ld", offset);
-       		if ( offset != -1 ) {
-       				addLog(offsetStr);
-       		}    	
-       } else {
-       		printf("#xlogFp:%d \r\n", xlogFp);
-       }
-       if(sig != SIGALRM){
-            exit(10);
-       }
-       signal(SIGALRM, signal_process);
-       alarm(1);
+	if(sig != SIGALRM){
+       	     exit(10);
+       	}
+	long  offset = ftell(xlogFp);
+	char offsetStr[15];
+	sprintf(offsetStr, "%ld", offset);
+	if ( offset != -1 ) {
+		xFile(offset_log, offsetStr, 1);
+	}
+	
+	if (xlogFp) {	
+		signal(SIGALRM, signal_process);
+		alarm(1);
+	}
+
 }
 
 int listen_log(conf_public *public,conf_project *project, int index, conf_project *c_shmaddr) {
@@ -386,15 +385,16 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	debug("Start reading %s from the offset: %ld\r\n", filename,  offset_record);
 	osize = project[index].from_begin == 1 ? 0 : (project[index].from_begin = 2 && offset_record > 0 ? offset_record : filesize(filename));    
         debug("%d %s %s %d %d \n",index, filename, server_ip, server_port, osize);
-	signal(SIGALRM, signal_process);
-        alarm(1);
         for (osize;;) {
 		nsize = filesize(filename);
 		if (nsize > osize) {
-			//if (!(xlogFp = fopen(filename, "r"))) {
-                	//	fprintf(stderr, _("Cannot open web log  \"%s\" for read\n"), filename);
-                	//	exit(1);
-        		//}
+			if (!(xlogFp = fopen(filename, "r"))) {
+                		debug("Cannot open web log  \"%s\" for read\n", filename);
+                		exit(1);
+        		}
+			signal(SIGALRM, signal_process);
+        		alarm(1);
+			usleep(1250000);
                         setvbuf(xlogFp, NULL, _IOLBF, BUFSIZ);
 			if (!fseek(xlogFp, osize, SEEK_SET)) {
 				while(!feof(xlogFp)) {
@@ -436,19 +436,12 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 							line_count = 0;
 							strcpy(multi_line_log, "");
 						}
-						////进入临界区
-						//if(!semaphore_p()) {
-						//	exit(-8);
-						//}
 						c_shmaddr[index].count = valid_count;
-						//if(!semaphore_v()) {
-						//	exit(-9);
-						//}
 					}
 				}
 			}
-			//fflush(stdout);
-			//fclose(xlogFp);
+	                alarm(0);
+			fclose(xlogFp);
 			osize = nsize;
 			
 		}
