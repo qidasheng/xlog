@@ -1,4 +1,14 @@
 #include "parse_conf.h"
+int position( const char *s, int c ) {
+	if ( s == NULL ) {
+		return -1;
+	}
+	int pos;
+	char *p;
+	p = index(s, c);
+	return p == NULL ? -1 : p - s;
+}
+
 
 void xstrcpy (char *p, const char *buf) {
         strncpy(p, buf, LINE - 1);
@@ -23,8 +33,9 @@ static struct conf_project * init_conf_project (void)	{
 
 
 int parse_project(char *line, conf_public *public_arr,  conf_project *project_arr, int index) {
+	//printf("%c\n", line[0]);
         if ( strlen(line) < 3 || line == NULL || line == "\r\n" ||  line[0] == '#' ) {
-                return 0;
+		return 0;
         }
         const char *key, *val;
         int  i=0;
@@ -100,17 +111,18 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
 
 
 int get_conf(FILE *f, conf_public *public_arr, conf_project *project_arr) {    
-    	char       buf[BUFFER];
-    	char       conf_line[1024];
-	int n = 0;
+    	char buf[BUFFER];
+    	char line[LINE];
+	int  n = 0;
 
 	int is_project_conf = 0;
 	int project_conf_index = 0;
 	int project_index = 0;
 	fseek(f, 0, SEEK_SET);
 	while(!feof(f)) {
-		fgets(conf_line, 1024, f);
-        	if (strstr(conf_line, "[project]") != NULL) { 
+		fgets(line, LINE, f);
+		//printf("%c -> ", *line);
+        	if ( *line != '#' && strstr(line, "[project]") != NULL ) { 
 			is_project_conf = 1;
 			project_conf_index = 0;
 			project_index++;
@@ -121,14 +133,16 @@ int get_conf(FILE *f, conf_public *public_arr, conf_project *project_arr) {
 				is_project_conf = 0;
 			}
 		}
-		
+			
+		//printf("%d:%d:%s -> ", project_index, project_conf_index, line);
 		if (is_project_conf && project_conf_index > 0) {
-			parse_project(conf_line, NULL, project_arr, project_index - 1);
+			parse_project(line, NULL, project_arr, project_index - 1);
 		} else {
-			parse_project(conf_line, public_arr, NULL, -1);
+			parse_project(line, public_arr, NULL, -1);
 		}
 		n++;
 	}
 	return 0;
 }
+
 

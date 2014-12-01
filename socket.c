@@ -1,5 +1,5 @@
 #include "socket.h"
-int createConn(char *ip, unsigned int port) {
+int create_conn(char *ip, unsigned int port) {
     int client_socket = -1;
     struct sockaddr_in client_addr;
     bzero(&client_addr, sizeof (client_addr)); 
@@ -15,7 +15,6 @@ int createConn(char *ip, unsigned int port) {
         debug("Client Bind Port Failed!\n");
         return -2;
     }
-    //make_socket_non_blocking(client_socket);
 
     struct sockaddr_in server_addr;
     bzero(&server_addr, sizeof (server_addr));
@@ -33,17 +32,17 @@ int createConn(char *ip, unsigned int port) {
     setsockopt(client_socket, SOL_SOCKET,SO_SNDTIMEO, (char *)&timeout,sizeof(struct timeval));
     setsockopt(client_socket, SOL_SOCKET,SO_RCVTIMEO, (char *)&timeout,sizeof(struct timeval));
     return client_socket;
-    /*
-    execvp(arg[0], arg);
-    perror("execvp");
-     */
 }
 
+void  close_conn() {
+	close(client_socket);
+	client_socket = -1;	
+}
 
-void sendMsg(char *ip, unsigned int port, char *msg, int index, conf_project *c_shmaddr){
+void send_msg(char *ip, unsigned int port, char *msg, int index, conf_project *c_shmaddr){
     int retry_count = 0;
     while (client_socket < 0 && server_retry_count > retry_count ) {
-        client_socket = createConn(ip, port);
+        client_socket = create_conn(ip, port);
         retry_count++;
         sleep(server_retry_interval);
     }
@@ -62,24 +61,23 @@ void sendMsg(char *ip, unsigned int port, char *msg, int index, conf_project *c_
     bzero(buffer_recv, BUFFER_SIZE);
     strcat(buffer_send, msg);
     sendLen = send(client_socket, buffer_send, strlen(buffer_send), 0);
-    if ( errno !=EINTR ) {
-        client_socket = -1;
+    if ( errno != EINTR ) {
         debug("消息'%s'发送给%s失败！错误代码是%d，错误信息是'%s'\n", buffer_send, ip,  errno, strerror(errno));
+	close_conn();
     }
 
-    //从服务器接收数据到buffer中
     length = recv(client_socket, buffer_recv, BUFFER_SIZE, 0);
 
-    if ( errno !=EINTR ) {
-        client_socket = -1;
+    if ( errno != EINTR ) {
         debug("%d recv %s errno %d %s\n", length, buffer_recv, errno, strerror(errno));
+	close_conn();
     } else {
         line_count_ok++;
         c_shmaddr[index].count_ok = line_count_ok;
 
 
     }
-    //close(client_socket);client_socket = -1;
+    //close_conn();
 }
 
 

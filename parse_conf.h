@@ -1,7 +1,7 @@
 #include "xlog.h"
 
 
-
+#define BUFFER  4096
 int  line_min_len;
 int  line_max_len;
 int  line_count_per;

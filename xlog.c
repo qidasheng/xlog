@@ -4,10 +4,9 @@
 #endif
 
 
-
-int child_num = 0;
-int thread_socket = -1;
-FILE       *file_log;
+int  child_num = 0;
+int  thread_socket = -1;
+FILE *file_log;
 
 struct process {
         int s[2];
@@ -53,11 +52,50 @@ static struct conf_public public_arr = {
 
 time_t t_start  = 0;
 
-extern void sendMsg(char *ip, unsigned int port, char *msg, int index, conf_project *c_shmaddr);
+extern void send_msg(char *ip, unsigned int port, char *msg, int index, conf_project *c_shmaddr);
 char *get_date();
 
+
+char *ltoa(long N, char *str, int base)
+{
+      register int i = 2;
+      long uarg;
+      int bufsize = sizeof(long) * 8 + 1;
+      char *tail, *head = str, buf[bufsize];
+
+      if (36 < base || 2 > base)
+            base = 10;                    /* can only use 0-9, A-Z        */
+      tail = &buf[bufsize - 1];           /* last character position      */
+      *tail-- = '\0';
+
+      if (10 == base && N < 0L)
+      {
+            *head++ = '-';
+            uarg    = -N;
+      }
+      else  uarg = N;
+
+      if (uarg)
+      {
+            for (i = 1; uarg; ++i)
+            {
+                  register ldiv_t r;
+
+                  r       = ldiv(uarg, base);
+                  *tail-- = (char)(r.rem + ((9L < r.rem) ?
+                                  ('A' - 10L) : '0'));
+                  uarg    = r.quot;
+            }
+      }
+      else  *tail-- = '0';
+
+      memcpy(head, ++tail, i);
+      return str;
+}
+
+
 long  xFile(FILE *fp, char *msg, int mode) {
-	long log_offset = 0;
+	long  log_offset = 0;
 	char line[1024]; 
 	if (msg != NULL) {
 		char *log_info;
@@ -76,23 +114,42 @@ long  xFile(FILE *fp, char *msg, int mode) {
 				sprintf(log_info, "%s\r\n", msg);
 			} else {
 				fseek(fp, 0, SEEK_END);
-				sprintf(log_info, "%s, %s\r\n", date, msg);
+				sprintf(log_info, "%s,%s\r\n", date, msg);
 			}
+			fwrite(log_info, info_len, 1, fp);
+			free(log_info);	
 		}
-		fwrite(log_info, info_len, 1, fp);
-		free(log_info);	
 	} else {
 		fseek(fp, 0, SEEK_SET);
                 fgets(line, 1024, fp);
-		log_offset = atoi(line);
+		log_offset = atol(line);
 		return log_offset;
 	}
 	return 0;
 }
 
+
 void addLog (char *msg) {
 	xFile(file_log, msg, 2);
 }
+
+void signal_process (int sig) {
+        if(sig != SIGALRM){
+             exit(10);
+        }
+        long  offset = ftell(xlogFp);
+        char offsetStr[50];
+	ltoa(offset, offsetStr, 10);
+        if ( offset != -1 ) {
+                xFile(offset_log, offsetStr, 1);
+        }
+
+        if (xlogFp) {
+                signal(SIGALRM, signal_process);
+                alarm(1);
+        }
+}
+
 
 
 void sig_handler( int sig) {
@@ -112,7 +169,7 @@ char * xl_str_contact(char *first, char *second) {
      char *result;
      result = (char*) malloc(strlen(first) + strlen(second) + 1);
      if( result == NULL ){
-	debug("Error: malloc failed\n");
+	debug("Error: malloc failed");
         exit(EXIT_FAILURE);
      }
      strcpy(result, first);
@@ -198,14 +255,12 @@ int is_ip_start(const char *buf) {
         p = (char *)malloc(strlen(buf) + 1);
         strcpy(p, buf);
         tmp = p;
-        //printf("%s# # #\n",p);
         int ip_min_len = 7;
         int ip_max_len = 15;
         int dot_count = 0;
         int step  = 1;
         int len = 0;
         while (*p != '\0' || len <= ip_max_len) {
-                //printf("-> %c \n", *p);
                 if (isspace(*p)) {
                         break;
                 }
@@ -224,8 +279,6 @@ int is_ip_start(const char *buf) {
                         dot_count = dot_count + 1;
                         step = 1;
                 }
-
-                //printf("%d=%d\n", dot_count,step);
                 p++;
                 len++;
 
@@ -235,7 +288,6 @@ int is_ip_start(const char *buf) {
         if (dot_count != 3) {
                 return 0;
         }
-        //printf("1#%d\n", dot_count);
         return 1;
 }
 
@@ -303,24 +355,6 @@ void kill_all_child(int sig) {
 	exit(0);
 }
 
-void signal_process (int sig) {
-	if(sig != SIGALRM){
-       	     exit(10);
-       	}
-	long  offset = ftell(xlogFp);
-	char offsetStr[15];
-	sprintf(offsetStr, "%ld", offset);
-	if ( offset != -1 ) {
-		xFile(offset_log, offsetStr, 1);
-	}
-	
-	if (xlogFp) {	
-		signal(SIGALRM, signal_process);
-		alarm(1);
-	}
-
-}
-
 int listen_log(conf_public *public,conf_project *project, int index, conf_project *c_shmaddr) {
 	char       buffer[BUFFER];
 	int        line_max = 32 * 1024;
@@ -332,7 +366,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	filename = project[index].path;
        
 	if (!(xlogFp = fopen(filename, "r"))) {
-		debug("Cannot open web log  \"%s\" for read\n", filename);
+		debug("Cannot open web log  \"%s\" for read", filename);
 		exit(1);
 	}
 
@@ -343,8 +377,8 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 		fclose(fc);
 	}   
 
-	if (!( offset_log = fopen(offset_log_path, "rw+") )) {
-                debug("Cannot open offset record file  \"%s\"\n", offset_log_path);
+	if (!( offset_log = fopen(offset_log_path, "r+") )) {
+                debug("Cannot open offset record file  \"%s\"", offset_log_path);
                 exit(1);        
         } 
 
@@ -382,23 +416,16 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	int w = 0;
 	fpos_t pos;
 	long offset_record = xFile(offset_log, NULL, 0);
-	debug("Start reading %s from the offset: %ld\r\n", filename,  offset_record);
-	osize = project[index].from_begin == 1 ? 0 : (project[index].from_begin = 2 && offset_record > 0 ? offset_record : filesize(filename));    
-        debug("%d %s %s %d %d \n",index, filename, server_ip, server_port, osize);
+	debug("%s offset record: %ld", filename,  offset_record);
+	osize = project[index].from_begin == 1 ? filesize(filename) : (project[index].from_begin = 2 && offset_record > 50 ? offset_record : 0);    
+        debug("Start info:%d %s %s %d %d",index, filename, server_ip, server_port, osize);
+        signal(SIGALRM, signal_process);
+        alarm(1);
         for (osize;;) {
 		nsize = filesize(filename);
 		if (nsize > osize) {
-			if (!(xlogFp = fopen(filename, "r"))) {
-                		debug("Cannot open web log  \"%s\" for read\n", filename);
-                		exit(1);
-        		}
-			signal(SIGALRM, signal_process);
-        		alarm(1);
-			usleep(1250000);
-                        setvbuf(xlogFp, NULL, _IOLBF, BUFSIZ);
 			if (!fseek(xlogFp, osize, SEEK_SET)) {
-				while(!feof(xlogFp)) {
-                                        fgets(buf, line_max, xlogFp);
+				while( fgets(buf, line_max, xlogFp) != NULL ) {
 					if (buf == NULL) {
 						continue;
 					}
@@ -432,7 +459,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 						line_count++;
 						valid_count++;
 						if ( line_count >= line_count_per ) {
-                                       			sendMsg(server_ip, server_port, multi_line_log, index,  c_shmaddr);
+                                       			send_msg(server_ip, server_port, multi_line_log, index,  c_shmaddr);
 							line_count = 0;
 							strcpy(multi_line_log, "");
 						}
@@ -440,13 +467,22 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 					}
 				}
 			}
-	                alarm(0);
-			fclose(xlogFp);
 			osize = nsize;
 			
 		}
 
+		//容错
                 if (nsize < osize) {
+	                alarm(0);
+                        usleep(1250000);
+			fclose(xlogFp);
+                        if (!(xlogFp = fopen(filename, "r"))) {
+                                debug("Cannot open web log  \"%s\" for read", filename);
+                                exit(1);
+                        }
+                        signal(SIGALRM, signal_process);
+                        alarm(1);
+                        usleep(1250000);
 			osize = 0;
 		}
 		time_t t_end  = get_timestamp();
@@ -460,10 +496,9 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 
 int main(int argc, char **argv)
 {
-	//char **env = environ;while(*env){printf("%s\n",*env);env++;};exit(0);
 	char       buf[BUFFER];
 	char       fork_f_buf[BUFFER];
-        char       conf_line[1024];
+        char       conf_line[BUFFER];
 	FILE       *fp;
 	const char *filename = "xlog.conf";
 	if (argv[1]) {
@@ -498,31 +533,34 @@ int main(int argc, char **argv)
 	int ch;
         int count = 0;
         if (!(fp = fopen(conf_path, "r"))) {
-        	debug("Cannot open configure file \"%s\" for read\n", conf_path);
+        	printf("Cannot open configure file \"%s\" for read\n", conf_path);
         	exit(1);
     	}
 
-        while(!feof(fp)) {
-		fgets(conf_line, 1024, fp);
+        while( fgets(conf_line, BUFFER, fp) != NULL ) {
+		//printf("line:%c\n", conf_line[0]);
+                if ( conf_line[0] == '#' ) {
+                        continue;
+                }
                 if (strstr(conf_line, "[project]") != NULL) {
                         count++;
                 }
         }
+	//printf("count:%d\n", count);
 	child_num = count;
         get_conf(fp, &public_arr, project_arr);
-        fclose(fp); 
-
+	fclose(fp);
         if( !file_exists(public_arr.log_file) )   {
+                printf("Create xlog log  \"%s\"", public_arr.log_file);
                 FILE *fc = fopen(public_arr.log_file, "w+");
                 fclose(fc);
         }
 	
         if (!(file_log = fopen(public_arr.log_file, "a+"))) {
-                debug("Cannot open xlog log  \"%s\" for read\n", public_arr.log_file);
+                printf("Cannot open xlog log  \"%s\" for read\n", public_arr.log_file);
                 exit(1);
         }
-
-	
+	setvbuf(file_log, NULL, _IOLBF, BUFSIZ);
 	if ( daemon == 1 || strcmp(public_arr.daemonize, "yes") == 0) {
         	xlog_daemon();
 	}
@@ -539,7 +577,7 @@ int main(int argc, char **argv)
         key_t key_shm = ftok("/tmp", 147);  
         shmid= shmget(key_shm, sizeof(project_arr), IPC_CREAT);
         if(shmid== -1){                      
-                  debug("create share memory failed : %s\n", strerror(errno));
+                  debug("create share memory failed : %s", strerror(errno));
                   exit(-1);
         }
          
@@ -547,7 +585,7 @@ int main(int argc, char **argv)
 	sem_id = semget(key_sem, 1, 0666 | IPC_CREAT);
 
 	if(!set_semvalue()){
-		debug("Failed to initialize semaphore\n");
+		debug("Failed to initialize semaphore");
 		exit(EXIT_FAILURE);
 	}
 
@@ -555,7 +593,6 @@ int main(int argc, char **argv)
                 debug("create unnamed socketpair failed");
                 exit(2);
         }
-        //生产子进程
 	for(i=0;i<count;i++)
 	{
 		if(socketpair(AF_UNIX, SOCK_STREAM, 0, proc[i].s) == -1) {
@@ -589,7 +626,7 @@ int main(int argc, char **argv)
 					char pid_str[5];
 					sprintf(pid_str, "%d", p_arr[m]);
 					if ( (w = write(proc[j].s[0], pid_str, strlen(pid_str))) == -1) {
-						debug("write socketpair error\n");
+						debug("write socketpair error");
 						exit(3);
 					}   
                                          
@@ -599,7 +636,7 @@ int main(int argc, char **argv)
                                 int get_c = 0;
 				while(m < count - 1) {
 					if ((r = read (proc[m].s[1], pid_str_r, 5)) == -1) {
-						debug("read socketpair error\n");
+						debug("read socketpair error");
 						exit(4);
 					} else {
 						p_arr[m] = atoi(pid_str_r);
@@ -629,10 +666,10 @@ int main(int argc, char **argv)
         	signal (SIGHUP,  kill_all_child);
 		pr = wait(&status);
 		if(WIFEXITED(status)){
-			debug("\nthe child process %d exit normally\n", pr);
-			debug("\nthe return code is %d\n",WEXITSTATUS(status));
+			debug("the child process %d exit normally", pr);
+			debug("the return code is %d",WEXITSTATUS(status));
 		}else{
-			debug("\nthe child process %d exit abnormally\n", pr);
+			debug("the child process %d exit abnormally", pr);
 		}
 		del_semvalue();
 	}
