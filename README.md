@@ -9,7 +9,9 @@ xlog功能
 
 下载
 -----------
-https://github.com/qidasheng/xlog    
+```Bash
+git clone https://github.com/qidasheng/xlog.git 
+```
 
 
 脚本一键安装   
