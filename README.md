@@ -38,15 +38,17 @@ make uninstall
 ```
 
 配置    
-根目录xlog.conf有注解    
+```Vim
+根目录xlog.conf有注解
+```
 
 
-\#运行
+运行
 ```Bash
 xlog -c xlog.conf 
 ```
 
-\#后台运行
+后台运行
 ```Vim
 配置
 daemonize = yes    
