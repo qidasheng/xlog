@@ -1,4 +1,32 @@
 #include "parse_conf.h"
+
+char *get_hostname () {
+    gethostname(hostname, 1024);  
+    return hostname;
+}
+
+char *get_ip (const char *eth_name) {
+        int fd;
+        struct ifreq ifr;
+
+        fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+        /* I want to get an IPv4 IP address */
+        ifr.ifr_addr.sa_family = AF_INET;
+
+        /* I want IP address attached to "eth0" */
+        strncpy(ifr.ifr_name, trim_str(eth_name), IFNAMSIZ-1);
+
+        ioctl(fd, SIOCGIFADDR, &ifr);
+
+        close(fd);
+
+        /* display result */
+        //sprintf("%s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+        sprintf(ip, "%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+        return ip;
+}
+
 int position( const char *s, int c ) {
 	if ( s == NULL ) {
 		return -1;
@@ -11,7 +39,7 @@ int position( const char *s, int c ) {
 
 
 void xstrcpy (char *p, const char *buf) {
-        strncpy(p, buf, LINE - 1);
+        strncpy(p, buf,LINE - 1);
 }
 
 
@@ -33,22 +61,39 @@ static struct conf_project * init_conf_project (void)	{
 
 
 int parse_project(char *line, conf_public *public_arr,  conf_project *project_arr, int index) {
-	//printf("%c\n", line[0]);
+	//line[strlen(line)-1]='\0';
+	//printf("--->%s<---", line);
         if ( strlen(line) < 3 || line == NULL || line == "\r\n" ||  line[0] == '#' ) {
 		return 0;
         }
-        const char *key, *val;
+        char *key, *val;
         int  i=0;
         char *p[2];
         char *buf = line;
         char *key_name = NULL;
+        char *val_str = NULL;
         while((p[i]=strtok(buf,"="))!=NULL) {
                 i++;
                 buf=NULL;
         }
         if (p[0] != NULL && p[1] != NULL) {
                 key = trim_str(p[0]);
-                val = trim_str(p[1]);
+		if ((key_name = "add_prefix" , strcmp(key, key_name))!=0) {
+                	val = trim_str(p[1]);
+		} else {
+                	val = p[1];
+			if (val[strlen(val) - 1] == '\n') {
+                		val[strlen(val) - 1] = '\0';
+        		}
+			if (val[0] == '@') {
+				val[0] = ' ';
+				val = get_ip(val);
+			} else if (strcmp(val, "date")==0) {
+				val = get_date();	
+			} else if (strcmp(val, "hostname")==0) {
+				val = get_hostname();	
+			}
+		}
                 if (index != -1) {
                         if ((key_name = "name" , strcmp(key, key_name))==0) {                           
                                 xstrcpy(project_arr[index].name,  val);
@@ -75,6 +120,8 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
 						project_arr[index].config.server_retry_count = atoi(val);
 				} else if ((key_name = "server_retry_interval" , strcmp(key, key_name))==0) {
 						project_arr[index].config.server_retry_interval = atoi(val);								
+				} else if ((key_name = "add_prefix" , strcmp(key, key_name))==0) {
+						xstrcpy(project_arr[index].config.add_prefix, val);
 				}
                 
 		       }
@@ -101,6 +148,8 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
                                 xstrcpy(public_arr->listen_addr, val);
                         } else if ((key_name = "listen_port" , strcmp(key, key_name))==0) {
                                 public_arr->listen_port = atoi(val);	
+                        } else if ((key_name = "add_prefix" , strcmp(key, key_name))==0) {
+                                xstrcpy(public_arr->add_prefix, val);
                         }
                 }
         }

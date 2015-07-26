@@ -65,6 +65,7 @@ typedef struct conf_public {
         char listen_addr[LINE];
         long listen_port;
         char daemonize[LINE];
+        char add_prefix[100];
 } conf_public;
 
 

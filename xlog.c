@@ -22,12 +22,15 @@ extern char *server_ip;
 extern long server_port;
 extern int  server_retry_count;
 extern int  server_retry_interval;
+extern char *add_prefix;
 long line_count = 0;
 long line_count_total = 0;
 long line_count_ignore = 0;
 char *filename;
 long  offset = 0;
 FILE *xlogFp,*offset_log;
+char dynamic_path[LINE];
+char *new_path;
 
 extern const char *conf_path;
 
@@ -47,7 +50,8 @@ static struct conf_public public_arr = {
         .log_level   = "",
         .listen_addr   = "",
         .listen_port   = 0,
-        .daemonize = ""
+        .daemonize = "",
+        .add_prefix  = ""
 };
 
 time_t t_start  = 0;
@@ -55,6 +59,11 @@ time_t t_start  = 0;
 extern void send_msg(char *ip, unsigned int port, char *msg, int index, conf_project *c_shmaddr);
 char *get_date();
 
+char *get_dynamic_path(path_format) {
+    time_t t = time(0);
+    strftime(dynamic_path, sizeof(dynamic_path), path_format, localtime(&t));
+    return dynamic_path;
+}
 
 char *ltoa(long N, char *str, int base)
 {
@@ -355,16 +364,34 @@ void kill_all_child(int sig) {
 	exit(0);
 }
 
+void fault_tolerant () {
+        alarm(0);
+        usleep(1250000);
+        fclose(xlogFp);
+        if (!(xlogFp = fopen(filename, "r"))) {
+                debug("Cannot open web log  \"%s\" for read", filename);
+                exit(1);
+        }
+        signal(SIGALRM, signal_process);
+        alarm(1);
+        usleep(1250000);
+}
+
+
 int listen_log(conf_public *public,conf_project *project, int index, conf_project *c_shmaddr) {
 	char       buffer[BUFFER];
 	int        line_max = 32 * 1024;
 	int 	   line_count = 0;
 	int 	   valid_count = 0;
 	char       buf[line_max];
+	char       msg[line_max];
 	char       fork_buf[line_max];
 	size_t     osize, nsize;
-	filename = project[index].path;
-       
+	char 	   *tmp_path;
+	//filename = project[index].path;
+	tmp_path = get_dynamic_path(project[index].path);
+	filename = (char *) malloc(strlen(tmp_path));
+        strncpy(filename, tmp_path, strlen(tmp_path));
 	if (!(xlogFp = fopen(filename, "r"))) {
 		debug("Cannot open web log  \"%s\" for read", filename);
 		exit(1);
@@ -389,7 +416,10 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
         server_port    	      =  project[index].config.server_port != 0 ?  project[index].config.server_port  : public->server_port ;
         server_retry_count    =  project[index].config.server_retry_count != 0 ?  project[index].config.server_retry_count  : public->server_retry_count ;
         server_retry_interval =  project[index].config.server_retry_interval != 0 ?  project[index].config.server_retry_interval  : public->server_retry_interval ;
-
+	add_prefix            =  strlen(project[index].config.add_prefix) > 0 ?  project[index].config.add_prefix  : public->add_prefix ;
+	if (add_prefix[strlen(add_prefix) - 1] == '\n') {
+		add_prefix[strlen(add_prefix) - 1] = '\0';
+	}
         signal(SIGPIPE, SIG_IGN);
         signal (SIGINT,  signal_process);
         signal (SIGKILL, signal_process);
@@ -421,6 +451,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
         debug("Start info:%d %s %s %d %d",index, filename, server_ip, server_port, osize);
         signal(SIGALRM, signal_process);
         alarm(1);
+	int eq_count = 0;
         for (osize;;) {
 		nsize = filesize(filename);
 		if (nsize > osize) {
@@ -455,7 +486,10 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 
 					long int fgets_len = strlen(buf);
 					if ( fgets_len < line_max_len && fgets_len > line_min_len ) {
-						strcat(multi_line_log , buf);
+						if (strlen(add_prefix) > 1) {
+							sprintf(msg, "%s    %s", add_prefix, buf);
+						}
+						strcat(multi_line_log , msg);
 						line_count++;
 						valid_count++;
 						if ( line_count >= line_count_per ) {
@@ -473,17 +507,24 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 
 		//容错
                 if (nsize < osize) {
-	                alarm(0);
-                        usleep(1250000);
-			fclose(xlogFp);
-                        if (!(xlogFp = fopen(filename, "r"))) {
-                                debug("Cannot open web log  \"%s\" for read", filename);
-                                exit(1);
-                        }
-                        signal(SIGALRM, signal_process);
-                        alarm(1);
-                        usleep(1250000);
+			fault_tolerant();
 			osize = 0;
+		}
+		
+		//动态路径切换
+                if (nsize == osize && eq_count++ && eq_count > 10) {
+			eq_count = 0;
+			tmp_path = get_dynamic_path(project[index].path);
+			new_path = (char *) malloc(strlen(tmp_path));
+        		strncpy(new_path, tmp_path, strlen(tmp_path));
+			//新生产的路径如果存在就开始从新的路径读取信息
+			if (strcmp(filename, new_path) !=0) {
+			        if(file_exists(new_path))   {
+					filename = new_path;
+					fault_tolerant();
+					osize = 0;
+        			}	 
+			}
 		}
 		time_t t_end  = get_timestamp();
 		usleep(1000000);  
@@ -546,7 +587,6 @@ int main(int argc, char **argv)
                         count++;
                 }
         }
-	//printf("count:%d\n", count);
 	child_num = count;
         get_conf(fp, &public_arr, project_arr);
 	fclose(fp);
