@@ -60,6 +60,9 @@ extern void send_msg(char *ip, unsigned int port, char *msg, int index, conf_pro
 char *get_date();
 
 char *get_dynamic_path(path_format) {
+    //if (!strchr(path_format, "%")) {
+    //    return path_format;
+    //}
     time_t t = time(0);
     strftime(dynamic_path, sizeof(dynamic_path), path_format, localtime(&t));
     return dynamic_path;
@@ -391,7 +394,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 	//filename = project[index].path;
 	tmp_path = get_dynamic_path(project[index].path);
 	filename = (char *) malloc(strlen(tmp_path));
-        strncpy(filename, tmp_path, strlen(tmp_path));
+        strncpy(filename, tmp_path, strlen(tmp_path)+1);
 	if (!(xlogFp = fopen(filename, "r"))) {
 		debug("Cannot open web log  \"%s\" for read", filename);
 		exit(1);
@@ -516,7 +519,7 @@ int listen_log(conf_public *public,conf_project *project, int index, conf_projec
 			eq_count = 0;
 			tmp_path = get_dynamic_path(project[index].path);
 			new_path = (char *) malloc(strlen(tmp_path));
-        		strncpy(new_path, tmp_path, strlen(tmp_path));
+        		strncpy(new_path, tmp_path, strlen(tmp_path)+1);
 			//新生产的路径如果存在就开始从新的路径读取信息
 			if (strcmp(filename, new_path) !=0) {
 			        if(file_exists(new_path))   {

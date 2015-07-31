@@ -94,6 +94,7 @@ int parse_project(char *line, conf_public *public_arr,  conf_project *project_ar
 				val = get_hostname();	
 			}
 		}
+		//printf("%s--->%s\r\n", key, val);
                 if (index != -1) {
                         if ((key_name = "name" , strcmp(key, key_name))==0) {                           
                                 xstrcpy(project_arr[index].name,  val);
